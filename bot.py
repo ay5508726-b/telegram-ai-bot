@@ -5,9 +5,9 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import requests
 
-TG_TOKEN = os.environ["TELEGRAM_TOKEN"]
-GEMINI_KEY = os.environ["GEMINI_API_KEY"]
-MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+TG_TOKEN = os.environ["TELEGRAM_TOKEN"].strip()
+GEMINI_KEY = os.environ["GEMINI_API_KEY"].strip()
+MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash").strip()
 
 TG = f"https://api.telegram.org/bot{TG_TOKEN}"
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
@@ -20,6 +20,7 @@ def ask_gemini(chat_id, text):
     h = history.setdefault(chat_id, [])
     h.append({"role": "user", "parts": [{"text": text}]})
     del h[:-20]
+    r = None
     try:
         r = requests.post(
             GEMINI_URL,
@@ -32,9 +33,10 @@ def ask_gemini(chat_id, text):
         )
         reply = r.json()["candidates"][0]["content"]["parts"][0]["text"]
     except Exception as e:
-        print("Gemini error:", e)
         h.pop()
-        return "Sorry, abhi AI jawab nahi de paya. Thodi der baad try karo."
+        detail = r.text[:300] if r is not None else ""
+        print("Gemini error:", e, detail)
+        return "Error: " + str(e) + " | model=" + MODEL + " | " + detail
     h.append({"role": "model", "parts": [{"text": reply}]})
     return reply
 
@@ -56,7 +58,7 @@ def poll():
                 chat_id = msg["chat"]["id"]
                 text = msg["text"]
                 if text == "/start":
-                    send(chat_id, "Namaste! Mujhse kuch bhi poocho.")
+                    send(chat_id, "hello, welcome to vidya verse.")
                 elif text == "/reset":
                     history.pop(chat_id, None)
                     send(chat_id, "Baat-cheet reset ho gayi.")
