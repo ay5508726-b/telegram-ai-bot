@@ -26,9 +26,13 @@ IST = timezone(timedelta(hours=5, minutes=30))
 
 WELCOME = "Hello, welcome to Vidya Verse!"
 ADMIN_WELCOME = (
-    "Namaste Admin ji! Yahan se aap channel ke liye file schedule kar sakte ho.\n"
-    "File bhejo aur caption me time likho, jaise '9 PM' ya 'kal subah 9 baje'.\n"
-    "/schedule se lagi hui list dekho, /cancel 1 se ek rad karo, /cancel all se sab."
+    "Namaste Admin ji! Channel ke liye file schedule karna bahut aasan hai:\n\n"
+    "1. File bhejo (photo, PDF, video, kuch bhi).\n"
+    "2. Caption me apna message likho, aur sabse last me time aur date, jaise:\n"
+    "Aaj ki class notes 9 PM 12 Nov\n\n"
+    "Bot schedule karke ek card dega jisme Edit (time badalne ke liye) aur Cancel (rad karne ke liye) button honge. "
+    "Ye sirf aap use kar sakte ho.\n\n"
+    "/schedule se saari lagi hui files ki list dekho."
 )
 PRIVATE_BLOCK = (
     "Namaste! Main kewal Vidya Verse group ke liye bana hoon. "
@@ -142,6 +146,8 @@ last_problem = {}
 schedules = []
 sched_lock = threading.Lock()
 awaiting = None
+editing = None
+last_err = ""
 next_id = 1
 
 
@@ -191,7 +197,11 @@ def call_gemini(contents, system, schema=None):
         return "".join(p.get("text", "") for p in parts).strip()
     except Exception:
         print("Gemini error:", r.text[:300])
-        raise
+        try:
+            detail = r.json().get("error", {}).get("message", "")
+        except Exception:
+            detail = ""
+        raise RuntimeError(f"Gemini: {detail or 'jawab nahi mila'}"[:200])
 
 
 def tag_text(name, text, is_admin, is_group):
@@ -315,6 +325,24 @@ def admin_command(chat_id, instruction, msg_id):
 
 # ---------------- scheduling (Admin private chat -> channel) ----------------
 
+KIND_LABEL = {
+    "document": "Document", "photo": "Photo", "video": "Video", "audio": "Audio",
+    "voice": "Voice", "animation": "GIF", "video_note": "Video note",
+}
+
+
+def api(method, payload, timeout=30):
+    try:
+        r = requests.post(f"{TG}/{method}", json=payload, timeout=timeout)
+        try:
+            return r.json()
+        except Exception:
+            return {"ok": bool(getattr(r, "ok", False))}
+    except Exception as e:
+        print("API error:", method, e)
+        return {"ok": False, "description": str(e)}
+
+
 def media_kind(msg):
     for k in MEDIA_KINDS:
         if k in msg:
@@ -323,27 +351,36 @@ def media_kind(msg):
 
 
 def parse_when(text):
+    global last_err
     now = now_ist()
     system = (
         f"Current date and time in India (IST) is {now.strftime('%Y-%m-%d %H:%M')} ({now.strftime('%A')}).\n"
-        "The Admin wrote a text (Hindi, Hinglish or English) that may contain the time at which a file must be posted.\n"
-        "Understand it (examples: '9 PM', 'kal subah 9 baje', 'aaj shaam 5:30', 'parso raat 8', '15 november 10:00', 'subah=AM, dopahar=12-3 PM, shaam=PM, raat=PM').\n"
-        "If a time is present: ok=true, datetime='YYYY-MM-DD HH:MM' in 24 hour IST. If only a time of day is given with no date, use today, "
-        "but if that time has already passed today use tomorrow. caption = the remaining text with the time phrase and any instruction words like "
-        "'upload karna' removed, exactly what should stay as the post caption (empty if nothing remains), question = ''.\n"
-        "If no clear time is present: ok=false, datetime='', caption='', question = one short Hinglish question asking the time."
+        "The Admin wrote a text (Hindi, Hinglish or English) that may contain the time and date at which a file must be posted. "
+        "Normally the time comes with AM/PM and the date comes right after it, at the very end of the text, for example "
+        "'Class notes 9 PM 12 Nov' or 'Aaj ka paper 5:30 PM 12/11/2026'. The writing style can vary, so understand it carefully.\n"
+        "Rules:\n"
+        "- Dates are day-first: 12/11 or 12-11-2026 means 12 November. Month names like 'Nov', 'november', 'नवंबर' are fine. "
+        "If the year is missing use the nearest upcoming date.\n"
+        "- Words: aaj=today, kal=tomorrow, parso=day after tomorrow, subah=AM, dopahar=around noon, shaam/raat=PM.\n"
+        "- If a time is present: ok=true, datetime='YYYY-MM-DD HH:MM' in 24 hour IST. If only a time of day is given with no date, "
+        "use today, but if that time has already passed today use tomorrow.\n"
+        "- caption = the remaining text with the time, the date and any instruction words like 'upload karna' removed, exactly what "
+        "should stay as the post caption (empty string if nothing remains). question = ''.\n"
+        "- If no clear time is present: ok=false, datetime='', caption='', question = one short Hinglish question asking the time and date."
     )
     try:
         raw = call_gemini([{"role": "user", "parts": [{"text": text}]}], system, TIME_SCHEMA)
+        last_err = ""
         return json.loads(raw)
     except Exception as e:
         print("Time parse error:", e)
+        last_err = str(e)[:200]
         return None
 
 
 def evaluate(res):
     if not res:
-        return None, ERROR_REPLY
+        return None, ERROR_REPLY + (f"\n({last_err})" if last_err else "")
     if not res.get("ok"):
         return None, res.get("question") or ASK_TIME
     try:
@@ -355,18 +392,58 @@ def evaluate(res):
     return dt, None
 
 
+def find_schedule(sid):
+    with sched_lock:
+        for s in schedules:
+            if s["id"] == sid:
+                return s
+    return None
+
+
+def sched_text(s, header="Schedule ho gaya"):
+    cap = s["caption"] if s["caption"] else "(koi caption nahi)"
+    return (
+        f"{header}\n"
+        f"File: {KIND_LABEL.get(s['kind'], s['kind'])}\n"
+        f"Caption: {cap[:300]}\n"
+        f"Time: {when_text(s['when'])}\n"
+        f"Channel: {CHANNEL_CHAT}"
+    )
+
+
+def sched_markup(s):
+    return {"inline_keyboard": [[
+        {"text": "Edit", "callback_data": f"edit:{s['id']}"},
+        {"text": "Cancel", "callback_data": f"cancel:{s['id']}"},
+    ]]}
+
+
+def update_conf(s, text, buttons):
+    if not s.get("conf_mid"):
+        return
+    markup = sched_markup(s) if buttons else {"inline_keyboard": []}
+    api("editMessageText", {
+        "chat_id": ADMIN_ID, "message_id": s["conf_mid"], "text": text, "reply_markup": markup,
+    })
+
+
 def add_schedule(msg_id, kind, caption, dt):
     global next_id
     with sched_lock:
-        schedules.append({"id": next_id, "when": dt, "msg_id": msg_id, "kind": kind, "caption": caption})
+        s = {"id": next_id, "when": dt, "msg_id": msg_id, "kind": kind, "caption": caption, "conf_mid": None}
+        schedules.append(s)
         next_id += 1
+    return s
 
 
-def confirm_schedule(dt):
-    send(
-        ADMIN_ID,
-        f"Done Admin ji, file schedule ho gayi. {when_text(dt)} par {CHANNEL_CHAT} me daal dunga, usse pehle nahi.",
-    )
+def show_schedule(s):
+    res = api("sendMessage", {"chat_id": ADMIN_ID, "text": sched_text(s), "reply_markup": sched_markup(s)})
+    s["conf_mid"] = (res.get("result") or {}).get("message_id")
+
+
+def clear_edit():
+    global editing
+    editing = None
 
 
 def start_schedule(msg):
@@ -374,30 +451,43 @@ def start_schedule(msg):
     kind = media_kind(msg)
     caption_in = (msg.get("caption") or "").strip()
     res = parse_when(caption_in) if caption_in else None
-    if res is None and caption_in:
-        send(ADMIN_ID, ERROR_REPLY)
-        return
     dt, err = evaluate(res) if caption_in else (None, ASK_TIME)
     if dt:
-        add_schedule(msg["message_id"], kind, (res.get("caption") or "").strip(), dt)
+        s = add_schedule(msg["message_id"], kind, (res.get("caption") or "").strip(), dt)
         awaiting = None
-        confirm_schedule(dt)
+        show_schedule(s)
     else:
         awaiting = {"msg_id": msg["message_id"], "kind": kind, "caption": caption_in}
-        send(ADMIN_ID, err)
+        send(ADMIN_ID, err, plain=True)
 
 
 def continue_schedule(text):
     global awaiting
     aw = awaiting
-    res = parse_when(text)
-    dt, err = evaluate(res)
+    dt, err = evaluate(parse_when(text))
     if dt:
-        add_schedule(aw["msg_id"], aw["kind"], aw["caption"], dt)
+        s = add_schedule(aw["msg_id"], aw["kind"], aw["caption"], dt)
         awaiting = None
-        confirm_schedule(dt)
+        show_schedule(s)
     else:
-        send(ADMIN_ID, err)
+        send(ADMIN_ID, err, plain=True)
+
+
+def continue_edit(text):
+    global editing
+    s = find_schedule(editing)
+    if not s:
+        editing = None
+        send(ADMIN_ID, "Ye schedule ab nahi hai (post ho chuka ya cancel ho gaya).")
+        return
+    dt, err = evaluate(parse_when(text))
+    if not dt:
+        send(ADMIN_ID, err, plain=True)
+        return
+    s["when"] = dt
+    editing = None
+    update_conf(s, sched_text(s, "Schedule ho gaya (time badla gaya)"), True)
+    send(ADMIN_ID, f"Naya time set ho gaya: {when_text(dt)}.", plain=True)
 
 
 def list_schedules():
@@ -409,26 +499,32 @@ def list_schedules():
     lines = ["Lagi hui files:"]
     for i, s in enumerate(items, 1):
         cap = (s["caption"][:30] + "...") if len(s["caption"]) > 30 else s["caption"]
-        lines.append(f"{i}. {when_text(s['when'])} ({s['kind']}){' - ' + cap if cap else ''}")
-    lines.append("Rad karne ke liye /cancel 1 ya /cancel all")
+        lines.append(f"{i}. {when_text(s['when'])} ({KIND_LABEL.get(s['kind'], s['kind'])}){' - ' + cap if cap else ''}")
+    lines.append("Rad karne ke liye /cancel 1 ya /cancel all (ya schedule wale message ka Cancel button).")
     send(ADMIN_ID, "\n".join(lines), plain=True)
 
 
 def cancel_schedule(arg):
-    global awaiting
+    global awaiting, editing
     arg = arg.strip().lower()
+    removed = []
     with sched_lock:
         items = sorted(schedules, key=lambda s: s["when"])
         if arg == "all":
-            n = len(schedules)
+            removed = list(schedules)
             schedules.clear()
             awaiting = None
-            msg = f"Sab {n} schedule rad kar diye." if n else "Rad karne ke liye kuch nahi tha."
+            msg = f"Sab {len(removed)} schedule rad kar diye." if removed else "Rad karne ke liye kuch nahi tha."
         elif arg.isdigit() and 1 <= int(arg) <= len(items):
-            schedules.remove(items[int(arg) - 1])
+            removed = [items[int(arg) - 1]]
+            schedules.remove(removed[0])
             msg = "Wo schedule rad kar diya."
         else:
             msg = "Number sahi likho, jaise /cancel 1 (pehle /schedule se list dekh lo) ya /cancel all."
+    for s in removed:
+        if editing == s["id"]:
+            editing = None
+        update_conf(s, sched_text(s, "Ye schedule cancel kar diya gaya"), False)
     send(ADMIN_ID, msg)
 
 
@@ -436,22 +532,15 @@ def post_scheduled(s):
     payload = {"chat_id": CHANNEL_CHAT, "from_chat_id": ADMIN_ID, "message_id": s["msg_id"]}
     if s["kind"] in CAPTION_KINDS:
         payload["caption"] = s["caption"][:1024]
-    try:
-        r = requests.post(f"{TG}/copyMessage", json=payload, timeout=60)
-        ok = r.ok
-        desc = ""
-        if not ok:
-            try:
-                desc = r.json().get("description", "")
-            except Exception:
-                desc = r.text[:200]
-    except Exception as e:
-        ok, desc = False, str(e)
-    if ok:
+    res = api("copyMessage", payload, timeout=60)
+    if res.get("ok"):
         late = now_ist() - s["when"] > timedelta(minutes=2)
         note = " (bot so raha tha, isliye thodi late)" if late else ""
-        send(ADMIN_ID, f"Done Admin ji, file {CHANNEL_CHAT} par daal di gayi hai{note}.")
+        update_conf(s, sched_text(s, "Channel me post ho gayi"), False)
+        send(ADMIN_ID, f"File {CHANNEL_CHAT} par daal di gayi hai{note}.")
     else:
+        desc = res.get("description", "")
+        update_conf(s, sched_text(s, "Post nahi ho paayi"), False)
         send(
             ADMIN_ID,
             f"Channel me file nahi ja paayi: {desc}. Check karo ki bot channel me Administrator hai "
@@ -475,6 +564,48 @@ def scheduler():
             print("Scheduler error:", e)
 
 
+def handle_callback(cq):
+    global editing, awaiting
+    cid = cq.get("id")
+    user = (cq.get("from") or {}).get("id")
+    data = cq.get("data", "")
+    if user != ADMIN_ID:
+        api("answerCallbackQuery", {
+            "callback_query_id": cid, "text": "Ye button sirf Admin ke liye hai.", "show_alert": True,
+        })
+        return
+    action, _, sid = data.partition(":")
+    s = find_schedule(int(sid)) if sid.isdigit() else None
+    if not s:
+        api("answerCallbackQuery", {
+            "callback_query_id": cid, "text": "Ye schedule ab nahi hai (post ho chuka ya cancel ho gaya).",
+            "show_alert": True,
+        })
+        mid = (cq.get("message") or {}).get("message_id")
+        if mid:
+            api("editMessageReplyMarkup", {
+                "chat_id": ADMIN_ID, "message_id": mid, "reply_markup": {"inline_keyboard": []},
+            })
+        return
+    if action == "cancel":
+        with sched_lock:
+            if s in schedules:
+                schedules.remove(s)
+        if editing == s["id"]:
+            editing = None
+        update_conf(s, sched_text(s, "Ye schedule cancel kar diya gaya"), False)
+        api("answerCallbackQuery", {"callback_query_id": cid, "text": "Schedule cancel ho gaya."})
+    elif action == "edit":
+        editing = s["id"]
+        awaiting = None
+        api("answerCallbackQuery", {"callback_query_id": cid})
+        send(
+            ADMIN_ID,
+            "Naya time likho, AM/PM ke saath date bhi, jaise: 10 PM 15 Nov",
+            plain=True,
+        )
+
+
 # ---------------- message handling ----------------
 
 def handle_private(msg, sender):
@@ -485,6 +616,7 @@ def handle_private(msg, sender):
 
     text = msg.get("text")
     if media_kind(msg):
+        clear_edit()
         start_schedule(msg)
         return
     if not text:
@@ -494,6 +626,7 @@ def handle_private(msg, sender):
     cmd = parts[0].split("@")[0].lower()
     arg = parts[1] if len(parts) > 1 else ""
     if cmd == "/start":
+        clear_edit()
         send(ADMIN_ID, ADMIN_WELCOME, plain=True)
         return
     if cmd == "/reset":
@@ -507,6 +640,9 @@ def handle_private(msg, sender):
         cancel_schedule(arg)
         return
 
+    if editing is not None:
+        continue_edit(text)
+        return
     if awaiting:
         continue_schedule(text)
         return
@@ -622,12 +758,20 @@ def poll():
             r = requests.get(f"{TG}/getUpdates", params={"offset": offset, "timeout": 30}, timeout=40)
             for u in r.json().get("result", []):
                 offset = u["update_id"] + 1
+                cq = u.get("callback_query")
+                if cq:
+                    try:
+                        handle_callback(cq)
+                    except Exception as e:
+                        print("Callback error:", e)
                 msg = u.get("message")
                 if msg:
                     try:
                         handle(msg)
                     except Exception as e:
                         print("Handle error:", e)
+                        if msg.get("chat", {}).get("type") == "private" and msg.get("from", {}).get("id") == ADMIN_ID:
+                            send(ADMIN_ID, f"Bot me ek error aaya: {str(e)[:150]}", plain=True)
         except Exception as e:
             print("Poll error:", e)
             time.sleep(5)
