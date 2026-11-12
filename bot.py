@@ -2,6 +2,7 @@ import html
 import json
 import os
 import re
+import textwrap
 import threading
 import time
 from datetime import datetime, timedelta, timezone
@@ -18,6 +19,8 @@ GROUP_USERNAME = os.environ.get("GROUP_USERNAME", "vidyaversechat").strip().lstr
 CHANNEL_USERNAME = os.environ.get("CHANNEL_USERNAME", "vidyaverse0").strip().lstrip("@")
 
 GROUP_LINK = f"https://t.me/{GROUP_USERNAME}"
+CHANNEL_LINK = f"https://t.me/{CHANNEL_USERNAME}"
+MAX_DAYS = 30
 CHANNEL_CHAT = f"@{CHANNEL_USERNAME}"
 
 TG = f"https://api.telegram.org/bot{TG_TOKEN}"
@@ -28,19 +31,18 @@ WELCOME = "Hello, welcome to Vidya Verse!"
 ADMIN_WELCOME = (
     "Namaste Admin ji! Channel ke liye file schedule karna bahut aasan hai:\n\n"
     "1. File bhejo (photo, PDF, video, kuch bhi).\n"
-    "2. Caption me apna message likho, aur sabse last me time aur date, jaise:\n"
-    "Aaj ki class notes 9 PM 12 Nov\n\n"
-    "Bot schedule karke ek card dega jisme Edit (time badalne ke liye) aur Cancel (rad karne ke liye) button honge. "
-    "Ye sirf aap use kar sakte ho.\n\n"
+    "2. Caption likho, aur sabse last me quotes ke andar time aur date likho, jaise:\n"
+    'Aaj ki class ke notes "9:43 pm 12 Nov"\n\n'
+    "Date sirf aaj se 30 din ke andar ki chalegi. Mahina na likho to bot nazdeeki wo tareekh maan lega.\n\n"
+    "Bot ek card dega jisme Edit aur Cancel button honge. Ye sirf aap use kar sakte ho.\n\n"
     "/schedule se saari lagi hui files ki list dekho."
 )
-PRIVATE_BLOCK = (
-    "Namaste! Main kewal Vidya Verse group ke liye bana hoon. "
-    "Mujhse baat karne ke liye pehle group join karo, phir wahin apna sawal pooch lo:\n"
-    f"{GROUP_LINK}"
+PROMO_TEXT = (
+    "Crack Your Exams with Premium study materials without any cost! \U0001F3C6\n\n"
+    "Join Telegram for PDFs , Notes &  free batches. Link \U0001F447"
 )
-ADMIN_REPLY = "Iske liye please Admin se baat karo, wo aapki better help kar denge."
-PROBLEM_REPLY = "Aapki problem note kar li gayi hai. Admin isse jald se jald theek karne ki koshish karenge."
+ADMIN_REPLY = "Isme main kuch nahi kar sakta, please Admin ji se baat kar lijiye. Wo jald se jald dekhenge."
+PROBLEM_REPLY = "Isme main kuch nahi kar sakta, Admin ji se baat kar lijiye. Wo jald se jald ise theek karne ki koshish karenge."
 SCAM_REPLY = "Warning: Scam, fraud ya spam yahan allowed nahi hai. Dobara hua to aapko block karke group se remove kar diya jayega."
 ABOUT_ADMIN_REPLY = f"{ADMIN_NAME} ji is group ke Admin hain, wahi ise chalate hain."
 OFFER = "Aap kaho to main hi aapki ye problem Admin ke paas bhej dun?"
@@ -48,12 +50,16 @@ SENT_OK = "Done, aapka message Admin tak pahuncha diya hai."
 SENT_FAIL = "Abhi Admin tak message nahi pahunch paya. Thodi der baad dobara try karna."
 NO_REPLY = "Theek hai, koi baat nahi. Kuch aur ho to batana."
 ERROR_REPLY = "Abhi thoda issue aa raha hai, thodi der baad try karo."
-ASK_TIME = "Ye file kis time par channel me daalni hai? Jaise '9 PM' ya 'kal subah 9 baje' likh do."
-TIME_PAST = "Ye time to nikal chuka hai. Aage ka koi time likho, jaise 'aaj raat 10 baje' ya 'kal subah 9 baje'."
+SCHED_FAIL = "Aapka message schedule nahi hua."
+QUOTE_HINT = 'Time aur date quotes me aise likho: "9:43 pm 12 Nov"'
+ASK_TIME = SCHED_FAIL + "\n" + QUOTE_HINT + "\nSirf time-date bhej do, wahi file schedule ho jayegi."
+TIME_PAST = SCHED_FAIL + "\nYe time nikal chuka hai. Aage ka time likho."
+TIME_FAR = SCHED_FAIL + f"\nSirf aaj se {MAX_DAYS} din ke andar ki date chalegi."
 
 SYSTEM_PROMPT = f"""You are Lumi, the friendly helper bot of the "Vidya Verse" Telegram community. Lumi is a boy. In Hinglish always use masculine forms for yourself (for example "main bata sakta hoon", "main kar dunga", "main samajh gaya"), never feminine forms.
 
 ABOUT ADMIN
+- Admin is a man. For him always use respectful masculine forms ("Admin ji dekhenge", "karenge"), never feminine forms like "karengi".
 - The owner of the community is called "Admin". His real name is {ADMIN_NAME}. Normally always say just "Admin" and never use his name.
 - Say his name ONLY when someone directly asks who the admin is, who runs or owns this group, or what the admin's name is. Then use category ABOUT_ADMIN and say in your own words that {ADMIN_NAME} ji is the Admin and he runs the group.
 - Identity check: a message that starts with the tag [VERIFIED ADMIN] is from the real Admin, confirmed by his Telegram ID. If that person asks whether he is the Admin or who he is, say yes, he is the Admin ({ADMIN_NAME} ji), warmly and respectfully (category ABOUT_ADMIN). Never show or mention the tag itself.
@@ -67,8 +73,8 @@ HOW TO WORK
 CATEGORIES
 - CHAT: normal talk, doubts, studies, general knowledge, everyday questions. Answer the question properly and simply.
 - ABOUT_ADMIN: the person asks who the admin is, who runs the group, the admin's name, or (if tagged [VERIFIED ADMIN]) asks whether he himself is the Admin.
-- PROBLEM: the person reports a problem with an app, website, account, payment, course or any service. In "summary" write the actual problem in 1 to 2 short Hinglish lines. In "reply", tell them in your own words that you understood their problem (mention it briefly) and that Admin will try to fix it as soon as possible. Do not offer to forward it yourself, the system does that.
-- SEND_TO_ADMIN: the person asks or agrees that their problem or message should be passed to Admin. Examples: "haan bhej do", "ok", "admin tak pahuncha do", "ye zaroori hai admin ko batao", "admin ko ye bol do ...". A short "haan"/"ok"/"kar do" right after Lumi offered to send the problem to Admin also counts. In "summary" write exactly what should reach Admin: the person's real problem or message, taken from the recent chat, in 1 to 3 short Hinglish lines. Keep "reply" empty, the system confirms by itself. If the person refuses ("nahi", "rehne do"), use CHAT and reply politely instead.
+- PROBLEM: the person reports a problem with an app, website, account, payment, course or any service. In "summary" write only the actual problem in 1 to 2 short Hinglish lines from the person's own point of view (like "Meri app khul nahi rahi"), without the person's name and never as an English sentence like "User is asking". In "reply", tell them in your own words that you cannot do anything about it yourself, so they should talk to Admin ji, and that Admin will try to fix it as soon as possible. Do not offer to forward it yourself, the system does that.
+- SEND_TO_ADMIN: the person asks or agrees that their problem or message should be passed to Admin. Examples: "haan bhej do", "ok", "admin tak pahuncha do", "ye zaroori hai admin ko batao", "admin ko ye bol do ...". A short "haan"/"ok"/"kar do" right after Lumi offered to send the problem to Admin also counts. In "summary" write exactly what should reach Admin: the person's real problem or message, taken from the recent chat, in 1 to 3 short Hinglish lines from the person's own point of view, without the person's name and never as an English sentence like "User is asking". Keep "reply" empty, the system confirms by itself. If the person refuses ("nahi", "rehne do"), use CHAT and reply politely instead.
 - SCAM: the person is trying to scam or spam: asking for money, OTP, UPI or bank details, fake offers or giveaways, "double your money", investment or crypto lures, phishing links, promoting other channels or groups, or pretending to be Admin. In "reply", give a firm short warning in your own words that scam, fraud or spam is not allowed here and that if it happens again they will be blocked and removed from the group.
 - ADMIN: the person asks you to bring or find a link, app, website, file or download, asks you to write code or do some task for them, or raises a serious matter (complaint, medical, legal, money emergency). In "reply", politely say this is something Admin should handle and they should contact Admin.
 - SKIP: only in groups, when the message is just casual talk between members that does not need you. Keep "reply" empty.
@@ -288,21 +294,31 @@ def msg_link(chat, message_id):
     return ""
 
 
+PAD = "\u2800"
+
+
+def centered(text, mono=False, width=24):
+    w = len(text) * (1.2 if mono else 1)
+    return PAD * max(0, int((width - w) // 2))
+
+
+def report_text(name, problem):
+    lines = [
+        centered(name, mono=True) + f"<code>{html.escape(name, quote=False)}</code>",
+        "",
+        centered("Problem") + "<b>Problem</b>",
+    ]
+    for part in textwrap.wrap(problem, 24) or [""]:
+        lines.append(centered(part) + html.escape(part, quote=False))
+    return "\n".join(lines)
+
+
 def forward_to_admin(chat, sender, summary, original, link):
     # Goes only to the Admin's private chat, never to the group or the member.
-    lines = ["Nayi problem aayi hai"]
-    if chat.get("title"):
-        lines.append(f"Group: {chat['title']}")
-    who = sender.get("first_name", "User")
-    if sender.get("username"):
-        who += f" (@{sender['username']})"
-    lines.append(f"Kisne bataya: {who}")
-    lines.append(f"Problem: {summary or original}")
-    if original and summary and original.strip() != summary.strip():
-        lines.append(f"Unka message: {original}")
-    if link:
-        lines.append(f"Message link: {link}")
-    return send(ADMIN_ID, "\n".join(lines), plain=True)
+    name = (sender.get("first_name", "") + " " + sender.get("last_name", "")).strip() or "User"
+    problem = (summary or original or "").strip()[:600]
+    res = api("sendMessage", {"chat_id": ADMIN_ID, "text": report_text(name, problem), "parse_mode": "HTML"})
+    return bool(res.get("ok"))
 
 
 def admin_command(chat_id, instruction, msg_id):
@@ -329,6 +345,7 @@ KIND_LABEL = {
     "document": "Document", "photo": "Photo", "video": "Video", "audio": "Audio",
     "voice": "Voice", "animation": "GIF", "video_note": "Video note",
 }
+QUOTE_RE = re.compile(r'["“”„‟]([^"“”„‟]{2,60})["“”„‟]\s*$')
 
 
 def api(method, payload, timeout=30):
@@ -350,23 +367,37 @@ def media_kind(msg):
     return None
 
 
+def split_quoted(text):
+    """'notes "9:43 pm 12 Nov"' -> ('notes', '9:43 pm 12 Nov'). No quotes at the end -> (text, '')."""
+    text = (text or "").strip()
+    m = QUOTE_RE.search(text)
+    if m:
+        return text[: m.start()].strip(), m.group(1).strip()
+    return text, ""
+
+
+def unquote(text):
+    return (text or "").strip().strip('"“”„‟').strip()
+
+
 def parse_when(text):
     global last_err
     now = now_ist()
     system = (
         f"Current date and time in India (IST) is {now.strftime('%Y-%m-%d %H:%M')} ({now.strftime('%A')}).\n"
-        "The Admin wrote a text (Hindi, Hinglish or English) that may contain the time and date at which a file must be posted. "
-        "Normally the time comes with AM/PM and the date comes right after it, at the very end of the text, for example "
-        "'Class notes 9 PM 12 Nov' or 'Aaj ka paper 5:30 PM 12/11/2026'. The writing style can vary, so understand it carefully.\n"
+        "The Admin wrote a time and a date (Hindi, Hinglish or English), for example '9:43 pm 12 Nov', '5 pm 15', "
+        "'10:15 pm 13 november', '9 baje shaam 12/11'. The writing style can vary, so understand it carefully.\n"
         "Rules:\n"
-        "- Dates are day-first: 12/11 or 12-11-2026 means 12 November. Month names like 'Nov', 'november', 'नवंबर' are fine. "
-        "If the year is missing use the nearest upcoming date.\n"
-        "- Words: aaj=today, kal=tomorrow, parso=day after tomorrow, subah=AM, dopahar=around noon, shaam/raat=PM.\n"
-        "- If a time is present: ok=true, datetime='YYYY-MM-DD HH:MM' in 24 hour IST. If only a time of day is given with no date, "
-        "use today, but if that time has already passed today use tomorrow.\n"
-        "- caption = the remaining text with the time, the date and any instruction words like 'upload karna' removed, exactly what "
-        "should stay as the post caption (empty string if nothing remains). question = ''.\n"
-        "- If no clear time is present: ok=false, datetime='', caption='', question = one short Hinglish question asking the time and date."
+        "- The time normally has AM/PM. If there is no AM/PM, no clear 24-hour form (like 21:30) and no word like subah/shaam/raat, "
+        "set ok=false and ask whether it is AM or PM.\n"
+        "- The date comes after the time. Dates are day-first: 12/11 means 12 November. If only a day number is written "
+        "(like '12' or '13'), the month is missing: use the nearest upcoming date with that day number from today "
+        "(this month if it is still ahead, otherwise next month); if that day number is today itself, use today even if the time has passed. "
+        "If a month name is written, use it, with the current year (or next year if that date has already passed).\n"
+        "- Words: aaj=today, kal=tomorrow, parso=day after tomorrow, subah=AM, shaam/raat=PM.\n"
+        "- If a time is given but no date at all, use today if the time is still ahead, otherwise tomorrow.\n"
+        "- If understood: ok=true, datetime='YYYY-MM-DD HH:MM' in 24 hour IST, caption='', question=''.\n"
+        "- If not clear: ok=false, datetime='', caption='', question = one short Hinglish sentence asking for it."
     )
     try:
         raw = call_gemini([{"role": "user", "parts": [{"text": text}]}], system, TIME_SCHEMA)
@@ -382,13 +413,16 @@ def evaluate(res):
     if not res:
         return None, ERROR_REPLY + (f"\n({last_err})" if last_err else "")
     if not res.get("ok"):
-        return None, res.get("question") or ASK_TIME
+        return None, SCHED_FAIL + "\n" + (res.get("question") or QUOTE_HINT)
     try:
         dt = datetime.strptime(str(res.get("datetime", "")).strip(), "%Y-%m-%d %H:%M").replace(tzinfo=IST)
     except Exception:
         return None, ASK_TIME
-    if dt <= now_ist() + timedelta(seconds=20):
+    now = now_ist()
+    if dt <= now + timedelta(seconds=20):
         return None, TIME_PAST
+    if dt > now + timedelta(days=MAX_DAYS):
+        return None, TIME_FAR
     return dt, None
 
 
@@ -400,15 +434,16 @@ def find_schedule(sid):
     return None
 
 
+def short_when(dt):
+    return f"{dt.day} {dt.strftime('%b')}, {dt.strftime('%I:%M %p').lstrip('0')}"
+
+
+def quoted_when(dt):
+    return f"{dt.strftime('%I:%M %p').lstrip('0').lower()} {dt.day} {dt.strftime('%b')}"
+
+
 def sched_text(s, header="Schedule ho gaya"):
-    cap = s["caption"] if s["caption"] else "(koi caption nahi)"
-    return (
-        f"{header}\n"
-        f"File: {KIND_LABEL.get(s['kind'], s['kind'])}\n"
-        f"Caption: {cap[:300]}\n"
-        f"Time: {when_text(s['when'])}\n"
-        f"Channel: {CHANNEL_CHAT}"
-    )
+    return f"{header}\n{short_when(s['when'])}"
 
 
 def sched_markup(s):
@@ -450,21 +485,25 @@ def start_schedule(msg):
     global awaiting
     kind = media_kind(msg)
     caption_in = (msg.get("caption") or "").strip()
-    res = parse_when(caption_in) if caption_in else None
-    dt, err = evaluate(res) if caption_in else (None, ASK_TIME)
+    base, tq = split_quoted(caption_in)
+    if not tq:
+        awaiting = {"msg_id": msg["message_id"], "kind": kind, "caption": caption_in}
+        send(ADMIN_ID, ASK_TIME, plain=True)
+        return
+    dt, err = evaluate(parse_when(tq))
     if dt:
-        s = add_schedule(msg["message_id"], kind, (res.get("caption") or "").strip(), dt)
+        s = add_schedule(msg["message_id"], kind, base, dt)
         awaiting = None
         show_schedule(s)
     else:
-        awaiting = {"msg_id": msg["message_id"], "kind": kind, "caption": caption_in}
+        awaiting = {"msg_id": msg["message_id"], "kind": kind, "caption": base}
         send(ADMIN_ID, err, plain=True)
 
 
 def continue_schedule(text):
     global awaiting
     aw = awaiting
-    dt, err = evaluate(parse_when(text))
+    dt, err = evaluate(parse_when(unquote(text)))
     if dt:
         s = add_schedule(aw["msg_id"], aw["kind"], aw["caption"], dt)
         awaiting = None
@@ -480,14 +519,13 @@ def continue_edit(text):
         editing = None
         send(ADMIN_ID, "Ye schedule ab nahi hai (post ho chuka ya cancel ho gaya).")
         return
-    dt, err = evaluate(parse_when(text))
+    dt, err = evaluate(parse_when(unquote(text)))
     if not dt:
         send(ADMIN_ID, err, plain=True)
         return
     s["when"] = dt
     editing = None
-    update_conf(s, sched_text(s, "Schedule ho gaya (time badla gaya)"), True)
-    send(ADMIN_ID, f"Naya time set ho gaya: {when_text(dt)}.", plain=True)
+    update_conf(s, sched_text(s), True)
 
 
 def list_schedules():
@@ -499,7 +537,7 @@ def list_schedules():
     lines = ["Lagi hui files:"]
     for i, s in enumerate(items, 1):
         cap = (s["caption"][:30] + "...") if len(s["caption"]) > 30 else s["caption"]
-        lines.append(f"{i}. {when_text(s['when'])} ({KIND_LABEL.get(s['kind'], s['kind'])}){' - ' + cap if cap else ''}")
+        lines.append(f"{i}. {short_when(s['when'])} ({KIND_LABEL.get(s['kind'], s['kind'])}){' - ' + cap if cap else ''}")
     lines.append("Rad karne ke liye /cancel 1 ya /cancel all (ya schedule wale message ka Cancel button).")
     send(ADMIN_ID, "\n".join(lines), plain=True)
 
@@ -537,7 +575,7 @@ def post_scheduled(s):
         late = now_ist() - s["when"] > timedelta(minutes=2)
         note = " (bot so raha tha, isliye thodi late)" if late else ""
         update_conf(s, sched_text(s, "Channel me post ho gayi"), False)
-        send(ADMIN_ID, f"File {CHANNEL_CHAT} par daal di gayi hai{note}.")
+        send(ADMIN_ID, f"File channel me daal di gayi hai{note}.")
     else:
         desc = res.get("description", "")
         update_conf(s, sched_text(s, "Post nahi ho paayi"), False)
@@ -601,17 +639,23 @@ def handle_callback(cq):
         api("answerCallbackQuery", {"callback_query_id": cid})
         send(
             ADMIN_ID,
-            "Naya time likho, AM/PM ke saath date bhi, jaise: 10 PM 15 Nov",
+            f'Naya time aur date quotes me likho.\nAbhi: "{quoted_when(s["when"])}"\nJaise: "10 pm 13"',
             plain=True,
         )
 
 
 # ---------------- message handling ----------------
 
+def send_promo(chat_id):
+    body = html.escape(PROMO_TEXT, quote=False).replace("Link", "<b>Link</b>")
+    api("sendMessage", {"chat_id": chat_id, "text": body, "parse_mode": "HTML"})
+    api("sendMessage", {"chat_id": chat_id, "text": CHANNEL_LINK})
+
+
 def handle_private(msg, sender):
     user_id = sender.get("id")
     if user_id != ADMIN_ID:
-        send(msg["chat"]["id"], PRIVATE_BLOCK, plain=True)
+        send_promo(msg["chat"]["id"])
         return
 
     text = msg.get("text")
