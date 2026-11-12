@@ -72,12 +72,12 @@ HOW TO WORK
 3. Write "reply" in your own natural words, based on that understanding. Do not copy ready-made lines.
 
 CATEGORIES
-- CHAT: normal talk, doubts, studies, general knowledge, everyday questions. Answer the question properly and simply.
+- CHAT: normal talk, doubts, studies, general knowledge, everyday questions. This also includes ALL study questions of Maths, Physics, Chemistry, Biology and other school/college subjects: calculations, numericals, divisions, equations, formulas, concepts. Solve them yourself, step by step, and give the final answer clearly. NEVER refuse a study question and never send it to Admin. Only coding/programming is not allowed (see ADMIN).
 - ABOUT_ADMIN: the person asks who the admin is, who runs the group, the admin's name, or (if tagged [VERIFIED ADMIN]) asks whether he himself is the Admin.
 - PROBLEM: the person reports a problem with an app, website, account, payment, course or any service. In "summary" write only the actual problem in 1 to 2 short Hinglish lines from the person's own point of view (like "Meri app khul nahi rahi"), without the person's name and never as an English sentence like "User is asking". In "reply", tell them in your own words that you cannot do anything about it yourself, so they should talk to Admin ji, and that Admin will try to fix it as soon as possible. Do not offer to forward it yourself, the system does that.
 - SEND_TO_ADMIN: the person asks or agrees that their problem or message should be passed to Admin. Examples: "haan bhej do", "ok", "admin tak pahuncha do", "ye zaroori hai admin ko batao", "admin ko ye bol do ...". A short "haan"/"ok"/"kar do" right after Lumi offered to send the problem to Admin also counts. In "summary" write exactly what should reach Admin: the person's real problem or message, taken from the recent chat, in 1 to 3 short Hinglish lines from the person's own point of view, without the person's name and never as an English sentence like "User is asking". Keep "reply" empty, the system confirms by itself. If the person refuses ("nahi", "rehne do"), use CHAT and reply politely instead.
 - SCAM: the person is trying to scam or spam: asking for money, OTP, UPI or bank details, fake offers or giveaways, "double your money", investment or crypto lures, phishing links, promoting other channels or groups, or pretending to be Admin. In "reply", give a firm short warning in your own words that scam, fraud or spam is not allowed here and that if it happens again they will be blocked and removed from the group.
-- ADMIN: the person asks you to bring or find a link, app, website, file, study material or download, asks you to write code or do some task for them, or raises a serious matter (complaint, medical, legal, money emergency). In "summary" write what the person wants or the matter, in 1 to 2 short Hinglish lines from the person's own point of view (like "Mujhe Vidyakul ka APK chahiye"), without the person's name. In "reply", politely say in your own words that you cannot do this yourself, so they should talk to Admin ji. The system itself then asks them if you should pass the message to Admin, so do not offer that yourself.
+- ADMIN: the person asks you to bring or find a link, app, website, file, study material or download, asks you to write code or programs (coding only, NOT maths/science questions) or do some other task for them, or raises a serious matter (complaint, medical, legal, money emergency). In "summary" write what the person wants or the matter, in 1 to 2 short Hinglish lines from the person's own point of view (like "Mujhe Vidyakul ka APK chahiye"), without the person's name. In "reply", politely say in your own words that you cannot do this yourself, so they should talk to Admin ji. The system itself then asks them if you should pass the message to Admin, so do not offer that yourself.
 - SKIP: only in groups, when the message is just casual talk between members that does not need you. Keep "reply" empty.
 
 WHO IS TALKING TO WHOM
@@ -88,10 +88,10 @@ IMPORTANT
 - You cannot send anything to Admin yourself. Only the category SEND_TO_ADMIN makes the system send it. So in every other category never say that you are sending, forwarding or have sent something to Admin.
 
 STYLE
-- Simple Hinglish (Hindi in English letters mixed with easy English words), like a friendly senior. 2 to 4 short lines. No markdown, no bullet lists.
+- Simple Hinglish (Hindi in English letters mixed with easy English words), like a friendly senior. 2 to 4 short lines for normal talk. For a maths/science question write the solution step by step, each step on its own short line (up to about 12 lines), ending with the final answer. No markdown, no bullet lists. Write maths in plain text (use /, x, ^2, sqrt, =, ≈), never LaTeX.
 - Sound natural and human. Never mention Gemini, Google, AI models or "as an AI". If asked who you are, say you are Lumi, the Vidya Verse helper bot.
 - Use one or two fitting emojis in most replies (for example 😊 🙏 👍 📚 ✅), naturally and not too many.
-- Never give links or URLs. Never write code. Never suggest or provide apps, websites, files or downloads.
+- Never give links or URLs. Never write code or programs (solving maths/science numericals is fine and encouraged). Never suggest or provide apps, websites, files or downloads.
 """
 
 GROUP_NOTE = """
@@ -205,7 +205,18 @@ def call_gemini(contents, system, schema=None):
     body = {"systemInstruction": {"parts": [{"text": system}]}, "contents": contents}
     if schema:
         body["generationConfig"] = {"responseMimeType": "application/json", "responseSchema": schema}
-    r = requests.post(GEMINI_URL, headers={"x-goog-api-key": GEMINI_KEY}, json=body, timeout=60)
+    r = None
+    for attempt in range(3):
+        try:
+            r = requests.post(GEMINI_URL, headers={"x-goog-api-key": GEMINI_KEY}, json=body, timeout=60)
+        except Exception as e:
+            print("Gemini request error:", e)
+            r = None
+        if r is not None and r.status_code not in (429, 500, 502, 503, 504):
+            break
+        time.sleep(1.5 * (attempt + 1))
+    if r is None:
+        raise RuntimeError("Gemini: connect nahi hua")
     try:
         parts = r.json()["candidates"][0]["content"]["parts"]
         return "".join(p.get("text", "") for p in parts).strip()
@@ -327,710 +338,46 @@ def msg_link(chat, message_id):
     return ""
 
 
-PAD = "\u2800"
-DANGER = "\u26A0\uFE0F"
-
-
-def centered(text, width=26):
-    return PAD * max(0, int((width - len(text)) // 2))
-
-
-def report_messages(sender, problem):
-    name = (sender.get("first_name", "") + " " + sender.get("last_name", "")).strip() or "User"
-    uid = sender.get("id")
-    esc = html.escape(name, quote=False)
-    name_html = f'<a href="tg://user?id={uid}">{esc}</a>' if uid else esc
-    title = f"{DANGER} Problem"
-    html_text = "\n".join([
-        centered(name) + name_html,
-        "",
-        centered(title) + f"{DANGER} <b>Problem</b>",
-        "\u2022 " + html.escape(problem, quote=False),
-    ])
-    plain_text = "\n".join([centered(name) + name, "", centered(title) + title, "\u2022 " + problem])
-    return html_text, plain_text
-
-
-def forward_to_admin(chat, sender, summary, original, link):
-    # Goes only to the Admin's private chat, never to the group or the member.
-    problem = (summary or original or "").strip()[:600] or "(khaali)"
-    html_text, plain_text = report_messages(sender, problem)
-    res = api("sendMessage", {
-        "chat_id": ADMIN_ID, "text": html_text, "parse_mode": "HTML", "disable_web_page_preview": True,
-    })
-    if not res.get("ok"):
-        res = api("sendMessage", {"chat_id": ADMIN_ID, "text": plain_text})
-    return bool(res.get("ok"))
-
-
-def admin_command(chat_id, instruction, msg_id):
-    if not instruction:
-        send(chat_id, "Ji Admin, boliye, kya karna hai?", msg_id)
-        return
-    recent = []
-    for item in history.get(chat_id, [])[-6:]:
-        who = "Lumi" if item["role"] == "model" else "Member"
-        recent.append(f"{who}: {item['parts'][0]['text']}")
-    context = "\n".join(recent)
-    content = f"Recent group chat:\n{context}\n\nADMIN INSTRUCTION: {instruction}"
-    try:
-        reply = call_gemini([{"role": "user", "parts": [{"text": content}]}], ADMIN_SYSTEM)
-    except Exception:
-        send(chat_id, ERROR_REPLY, msg_id)
-        return
-    send(chat_id, reply or "Ji Admin, ho gaya.", msg_id)
-
-
-# ---------------- scheduling (Admin private chat -> channel) ----------------
-
-KIND_LABEL = {
-    "text": "Text", "document": "Document", "photo": "Photo", "video": "Video", "audio": "Audio",
-    "voice": "Voice", "animation": "GIF", "video_note": "Video note",
-}
-QUOTE_RE = re.compile(r'["“”„‟＂]([^"“”„‟＂]{2,60})["“”„‟＂]\s*$')
-MONTHS = {"jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
-          "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12}
-MONTH_RE = "jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec"
-
-
-def api(method, payload, timeout=30):
-    try:
-        r = requests.post(f"{TG}/{method}", json=payload, timeout=timeout)
-        try:
-            return r.json()
-        except Exception:
-            return {"ok": bool(getattr(r, "ok", False))}
-    except Exception as e:
-        print("API error:", method, e)
-        return {"ok": False, "description": str(e)}
-
-
-def media_kind(msg):
-    for k in MEDIA_KINDS:
-        if k in msg:
-            return k
-    return None
-
-
-def split_quoted(text):
-    """'notes "9:43 pm 12 Nov"' -> ('notes', '9:43 pm 12 Nov'). No quotes at the end -> (text, '')."""
-    text = (text or "").strip()
-    m = QUOTE_RE.search(text)
-    if m:
-        return text[: m.start()].strip(), m.group(1).strip()
-    return text, ""
-
-
-def unquote(text):
-    return (text or "").strip().strip('"“”„‟＂').strip()
+# ---- Problem card (Admin ko jaata hai) ----
+# Premium custom emoji ke ids yahan env me daalo (Telegram me message ko @RawDataBot/@JsonDumpBot pe forward
+# karke custom_emoji_id mil jaati hai). Na ho ya bot ko allowed na ho to normal emoji se kaam chalta hai.
+TICK_EMOJI_ID = os.environ.get("TICK_EMOJI_ID", "").strip()
+PROBLEM_EMOJI_IDS = [x.strip() for x in os.environ.get("PROBLEM_EMOJI_IDS", "").split(",") if x.strip()]
+FANCY_FONT = os.environ.get("FANCY_FONT", "1").strip() != "0"
 
 
 def utf16_len(s):
     return len(s.encode("utf-16-le")) // 2
 
 
-def keep_entities(original, base, entities):
-    """Keep the Admin's own formatting (bold, links...) for the part that stays after the quoted time is cut off."""
-    if not entities or not base or not (original or "").startswith(base):
-        return []
-    limit = utf16_len(base)
-    return [e for e in entities if e.get("offset", 0) + e.get("length", 0) <= limit]
-
-
-def local_parse(text):
-    """Plain fallback when Gemini does not answer: '9:43 pm 12 Nov', '5 pm 15', '10:15 pm 13/11', '9 pm kal'."""
-    now = now_ist()
-    t = " " + (text or "").lower().replace(",", " ") + " "
-    ask = {"ok": False, "datetime": "", "caption": "", "question": 'Time AM/PM ke saath likho, jaise "9:43 pm 12 Nov".'}
-    m = re.search(r"(?<!\d)(\d{1,2})(?:[:.](\d{2}))?\s*([ap])\.?\s*m\b\.?", t)
-    if m:
-        hour, minute = int(m.group(1)), int(m.group(2) or 0)
-        if not (1 <= hour <= 12 and minute < 60):
-            return ask
-        hour = hour % 12 + (12 if m.group(3) == "p" else 0)
-    else:
-        m = re.search(r"(?<!\d)([01]?\d|2[0-3]):([0-5]\d)(?!\d)", t)
-        if not m or int(m.group(1)) <= 12:
-            return ask
-        hour, minute = int(m.group(1)), int(m.group(2))
-    rest = t[: m.start()] + " " + t[m.end():]
-
-    today = now.date()
-    day = month = year = None
-    d = re.search(r"(?<!\d)(\d{1,2})\s*[/\-.]\s*(\d{1,2})(?:\s*[/\-.]\s*(\d{2,4}))?(?!\d)", rest)
-    if d:
-        day, month = int(d.group(1)), int(d.group(2))
-        if d.group(3):
-            year = int(d.group(3))
-            year += 2000 if year < 100 else 0
-    else:
-        mn = re.search(rf"(?<!\d)(\d{{1,2}})\s*(?:st|nd|rd|th)?\s*({MONTH_RE})[a-z]*", rest)
-        if mn:
-            day, month = int(mn.group(1)), MONTHS[mn.group(2)]
+def fancy(text):
+    """Serif bold font (Unicode Mathematical Bold), jaisa card me chahiye. Hindi/emoji jaise hain waise rehte hain."""
+    out = []
+    for ch in text:
+        if "A" <= ch <= "Z":
+            out.append(chr(0x1D400 + ord(ch) - 65))
+        elif "a" <= ch <= "z":
+            out.append(chr(0x1D41A + ord(ch) - 97))
+        elif "0" <= ch <= "9":
+            out.append(chr(0x1D7CE + ord(ch) - 48))
         else:
-            mn = re.search(rf"({MONTH_RE})[a-z]*\s*(\d{{1,2}})(?!\d)", rest)
-            if mn:
-                month, day = MONTHS[mn.group(1)], int(mn.group(2))
-            else:
-                bare = re.search(r"(?<![\d:])(\d{1,2})(?![\d:])", rest)
-                if bare:
-                    day = int(bare.group(1))
-
-    def mk(y, mo, dd):
-        try:
-            return datetime(y, mo, dd).date()
-        except ValueError:
-            return None
-
-    target = None
-    if day is not None and month is not None:
-        if year:
-            target = mk(year, month, day)
-        else:
-            target = mk(today.year, month, day)
-            if target and target < today:
-                target = mk(today.year + 1, month, day)
-    elif day is not None:
-        y, mo = today.year, today.month
-        for _ in range(13):
-            c = mk(y, mo, day)
-            if c and c >= today:
-                target = c
-                break
-            mo += 1
-            if mo == 13:
-                y, mo = y + 1, 1
-    elif re.search(r"\bparso\b", rest):
-        target = today + timedelta(days=2)
-    elif re.search(r"\bkal\b", rest):
-        target = today + timedelta(days=1)
-    else:
-        target = today
-        if datetime(today.year, today.month, today.day, hour, minute, tzinfo=IST) <= now + timedelta(seconds=20):
-            target = today + timedelta(days=1)
-    if not target:
-        ask["question"] = 'Date sahi nahi lagi. Time ke baad date likho, jaise "9:43 pm 12 Nov".'
-        return ask
-    return {"ok": True, "datetime": f"{target:%Y-%m-%d} {hour:02d}:{minute:02d}", "caption": "", "question": ""}
-
-
-def parse_when(text):
-    global last_err
-    now = now_ist()
-    system = (
-        f"Current date and time in India (IST) is {now.strftime('%Y-%m-%d %H:%M')} ({now.strftime('%A')}).\n"
-        "The Admin wrote a time and a date (Hindi, Hinglish or English), for example '9:43 pm 12 Nov', '5 pm 15', "
-        "'10:15 pm 13 november', '9 baje shaam 12/11'. The writing style can vary, so understand it carefully.\n"
-        "Rules:\n"
-        "- The time normally has AM/PM. If there is no AM/PM, no clear 24-hour form (like 21:30) and no word like subah/shaam/raat, "
-        "set ok=false and ask whether it is AM or PM.\n"
-        "- The date comes after the time. Dates are day-first: 12/11 means 12 November. If only a day number is written "
-        "(like '12' or '13'), the month is missing: use the nearest upcoming date with that day number from today "
-        "(this month if it is still ahead, otherwise next month); if that day number is today itself, use today even if the time has passed. "
-        "If a month name is written, use it, with the current year (or next year if that date has already passed).\n"
-        "- Words: aaj=today, kal=tomorrow, parso=day after tomorrow, subah=AM, shaam/raat=PM.\n"
-        "- If a time is given but no date at all, use today if the time is still ahead, otherwise tomorrow.\n"
-        "- If understood: ok=true, datetime='YYYY-MM-DD HH:MM' in 24 hour IST, caption='', question=''.\n"
-        "- If not clear: ok=false, datetime='', caption='', question = one short Hinglish sentence asking for it."
-    )
-    res = None
-    try:
-        raw = call_gemini([{"role": "user", "parts": [{"text": text}]}], system, TIME_SCHEMA)
-        res = json.loads(raw)
-        last_err = ""
-    except Exception as e:
-        print("Time parse error:", e)
-        last_err = str(e)[:200]
-    if not res or not res.get("ok"):
-        # Gemini failed or was unsure: try the plain reader, so a quoted time still gets scheduled.
-        alt = local_parse(text)
-        if alt.get("ok") or not res:
-            return alt
-    return res
-
-
-def evaluate(res):
-    if not res:
-        return None, ERROR_REPLY + (f"\n({last_err})" if last_err else "")
-    if not res.get("ok"):
-        return None, SCHED_FAIL + "\n" + (res.get("question") or QUOTE_HINT)
-    try:
-        dt = datetime.strptime(str(res.get("datetime", "")).strip(), "%Y-%m-%d %H:%M").replace(tzinfo=IST)
-    except Exception:
-        return None, ASK_TIME
-    now = now_ist()
-    if dt <= now + timedelta(seconds=20):
-        return None, TIME_PAST
-    if dt > now + timedelta(days=MAX_DAYS):
-        return None, TIME_FAR
-    return dt, None
-
-
-def find_schedule(sid):
-    with sched_lock:
-        for s in schedules:
-            if s["id"] == sid:
-                return s
-    return None
-
-
-def short_when(dt):
-    return f"{dt.day} {dt.strftime('%b')}, {dt.strftime('%I:%M %p').lstrip('0')}"
-
-
-def quoted_when(dt):
-    return f"{dt.strftime('%I:%M %p').lstrip('0').lower()} {dt.day} {dt.strftime('%b')}"
-
-
-def sched_text(s, header="Schedule ho gaya"):
-    return f"{header}\n{short_when(s['when'])}"
-
-
-def sched_markup(s):
-    return {"inline_keyboard": [[
-        {"text": "Edit", "callback_data": f"edit:{s['id']}"},
-        {"text": "Cancel", "callback_data": f"cancel:{s['id']}"},
-    ]]}
-
-
-def update_conf(s, text, buttons):
-    if not s.get("conf_mid"):
-        return
-    markup = sched_markup(s) if buttons else {"inline_keyboard": []}
-    api("editMessageText", {
-        "chat_id": ADMIN_ID, "message_id": s["conf_mid"], "text": text, "reply_markup": markup,
-    })
-
-
-def add_schedule(kind, dt, msg_id=None, caption="", text="", entities=None):
-    global next_id
-    with sched_lock:
-        s = {"id": next_id, "when": dt, "kind": kind, "msg_id": msg_id, "caption": caption,
-             "text": text, "entities": entities or [], "conf_mid": None}
-        schedules.append(s)
-        next_id += 1
-    return s
-
-
-def show_schedule(s):
-    res = api("sendMessage", {"chat_id": ADMIN_ID, "text": sched_text(s), "reply_markup": sched_markup(s)})
-    s["conf_mid"] = (res.get("result") or {}).get("message_id")
-
-
-def clear_edit():
-    global editing
-    editing = None
-
-
-def set_awaiting(kind, msg_id=None, caption="", text="", entities=None):
-    global awaiting
-    awaiting = {"t": time.time(), "kind": kind, "msg_id": msg_id, "caption": caption,
-                "text": text, "entities": entities or []}
-
-
-def clear_awaiting():
-    global awaiting
-    awaiting = None
-
-
-def awaiting_alive():
-    global awaiting
-    if awaiting and time.time() - awaiting["t"] > 900:
-        awaiting = None
-    return awaiting
-
-
-def start_schedule(msg):
-    """File with a caption. Quotes at the very end of the caption = schedule it."""
-    kind = media_kind(msg)
-    original = msg.get("caption") or ""
-    base, tq = split_quoted(original)
-    if not tq:
-        set_awaiting(kind, msg["message_id"], original.strip(), "", msg.get("caption_entities"))
-        send(ADMIN_ID, ASK_TIME, plain=True)
-        return
-    ents = keep_entities(original, base, msg.get("caption_entities"))
-    dt, err = evaluate(parse_when(tq))
-    if dt:
-        clear_awaiting()
-        show_schedule(add_schedule(kind, dt, msg["message_id"], base, "", ents))
-    else:
-        set_awaiting(kind, msg["message_id"], base, "", ents)
-        send(ADMIN_ID, err, plain=True)
-
-
-def start_schedule_text(msg, base, tq):
-    """Plain text message. Quotes at the very end of the text = schedule it."""
-    original = msg.get("text") or ""
-    ents = keep_entities(original, base, msg.get("entities"))
-    dt, err = evaluate(parse_when(tq))
-    if dt:
-        clear_awaiting()
-        show_schedule(add_schedule("text", dt, None, "", base[:4000], ents))
-    else:
-        set_awaiting("text", None, "", base[:4000], ents)
-        send(ADMIN_ID, err, plain=True)
-
-
-def continue_schedule(tq):
-    """A message that is only a quoted time, sent after a schedule did not work."""
-    aw = awaiting_alive()
-    if not aw:
-        return False
-    dt, err = evaluate(parse_when(tq))
-    if dt:
-        clear_awaiting()
-        show_schedule(add_schedule(aw["kind"], dt, aw["msg_id"], aw["caption"], aw["text"], aw["entities"]))
-    else:
-        send(ADMIN_ID, err, plain=True)
-    return True
-
-
-def continue_edit(text):
-    global editing
-    s = find_schedule(editing)
-    if not s:
-        editing = None
-        send(ADMIN_ID, "Ye schedule ab nahi hai (post ho chuka ya cancel ho gaya).")
-        return
-    dt, err = evaluate(parse_when(unquote(text)))
-    if not dt:
-        send(ADMIN_ID, err, plain=True)
-        return
-    s["when"] = dt
-    editing = None
-    update_conf(s, sched_text(s), True)
-
-
-def list_schedules():
-    with sched_lock:
-        items = sorted(schedules, key=lambda s: s["when"])
-    if not items:
-        send(ADMIN_ID, "Abhi koi message schedule nahi hai.")
-        return
-    lines = ["Lage hue schedule:"]
-    for i, s in enumerate(items, 1):
-        cap = s["caption"] or s["text"]
-        cap = (cap[:30] + "...") if len(cap) > 30 else cap
-        lines.append(f"{i}. {short_when(s['when'])} ({KIND_LABEL.get(s['kind'], s['kind'])}){' - ' + cap if cap else ''}")
-    lines.append("Rad karne ke liye /cancel 1 ya /cancel all (ya schedule wale message ka Cancel button).")
-    send(ADMIN_ID, "\n".join(lines), plain=True)
-
-
-def cancel_schedule(arg):
-    global awaiting, editing
-    arg = arg.strip().lower()
-    removed = []
-    with sched_lock:
-        items = sorted(schedules, key=lambda s: s["when"])
-        if arg == "all":
-            removed = list(schedules)
-            schedules.clear()
-            awaiting = None
-            msg = f"Sab {len(removed)} schedule rad kar diye." if removed else "Rad karne ke liye kuch nahi tha."
-        elif arg.isdigit() and 1 <= int(arg) <= len(items):
-            removed = [items[int(arg) - 1]]
-            schedules.remove(removed[0])
-            msg = "Wo schedule rad kar diya."
-        else:
-            msg = "Number sahi likho, jaise /cancel 1 (pehle /schedule se list dekh lo) ya /cancel all."
-    for s in removed:
-        if editing == s["id"]:
-            editing = None
-        update_conf(s, sched_text(s, "Ye schedule cancel kar diya gaya"), False)
-    send(ADMIN_ID, msg)
-
-
-def post_scheduled(s):
-    if s["kind"] == "text":
-        payload = {"chat_id": CHANNEL_CHAT, "text": s["text"][:4000]}
-        if s["entities"]:
-            payload["entities"] = s["entities"]
-        res = api("sendMessage", payload, timeout=60)
-    else:
-        payload = {"chat_id": CHANNEL_CHAT, "from_chat_id": ADMIN_ID, "message_id": s["msg_id"]}
-        if s["kind"] in CAPTION_KINDS:
-            payload["caption"] = s["caption"][:1024]
-            if s["entities"]:
-                payload["caption_entities"] = s["entities"]
-        res = api("copyMessage", payload, timeout=60)
-    if res.get("ok"):
-        late = now_ist() - s["when"] > timedelta(minutes=2)
-        note = " (bot so raha tha, isliye thodi late)" if late else ""
-        update_conf(s, sched_text(s, "Channel me post ho gayi"), False)
-        send(ADMIN_ID, f"Channel me post kar diya gaya hai{note}.")
-    else:
-        desc = res.get("description", "")
-        update_conf(s, sched_text(s, "Post nahi ho paayi"), False)
-        send(
-            ADMIN_ID,
-            f"Channel me post nahi ho paayi: {desc}. Check karo ki bot channel me Administrator hai "
-            "aur Post Messages allowed hai, phir dobara schedule karo.",
-            plain=True,
-        )
-
-
-def scheduler():
-    while True:
-        time.sleep(10)
-        try:
-            now = now_ist()
-            with sched_lock:
-                due = [s for s in schedules if s["when"] <= now]
-                for s in due:
-                    schedules.remove(s)
-            for s in sorted(due, key=lambda x: x["when"]):
-                post_scheduled(s)
-        except Exception as e:
-            print("Scheduler error:", e)
-
-
-def handle_callback(cq):
-    global editing, awaiting
-    cid = cq.get("id")
-    user = (cq.get("from") or {}).get("id")
-    data = cq.get("data", "")
-    if user != ADMIN_ID:
-        api("answerCallbackQuery", {
-            "callback_query_id": cid, "text": "Ye button sirf Admin ke liye hai.", "show_alert": True,
-        })
-        return
-    action, _, sid = data.partition(":")
-    s = find_schedule(int(sid)) if sid.isdigit() else None
-    if not s:
-        api("answerCallbackQuery", {
-            "callback_query_id": cid, "text": "Ye schedule ab nahi hai (post ho chuka ya cancel ho gaya).",
-            "show_alert": True,
-        })
-        mid = (cq.get("message") or {}).get("message_id")
-        if mid:
-            api("editMessageReplyMarkup", {
-                "chat_id": ADMIN_ID, "message_id": mid, "reply_markup": {"inline_keyboard": []},
-            })
-        return
-    if action == "cancel":
-        with sched_lock:
-            if s in schedules:
-                schedules.remove(s)
-        if editing == s["id"]:
-            editing = None
-        update_conf(s, sched_text(s, "Ye schedule cancel kar diya gaya"), False)
-        api("answerCallbackQuery", {"callback_query_id": cid, "text": "Schedule cancel ho gaya."})
-    elif action == "edit":
-        editing = s["id"]
-        awaiting = None
-        api("answerCallbackQuery", {"callback_query_id": cid})
-        send(
-            ADMIN_ID,
-            f'Naya time aur date quotes me likho.\nAbhi: "{quoted_when(s["when"])}"\nJaise: "10 pm 13"',
-            plain=True,
-        )
-
-
-# ---------------- message handling ----------------
-
-def send_promo(chat_id):
-    body = html.escape(PROMO_TEXT, quote=False).replace("Link", "<b>Link</b>")
-    api("sendMessage", {"chat_id": chat_id, "text": body, "parse_mode": "HTML"})
-    api("sendMessage", {"chat_id": chat_id, "text": CHANNEL_LINK})
-
-
-def handle_private(msg, sender):
-    user_id = sender.get("id")
-    if user_id != ADMIN_ID:
-        send_promo(msg["chat"]["id"])
-        return
-
-    text = msg.get("text")
-    if media_kind(msg):
-        clear_edit()
-        start_schedule(msg)
-        return
-    if not text:
-        return
-
-    parts = text.split(None, 1)
-    cmd = parts[0].split("@")[0].lower()
-    arg = parts[1] if len(parts) > 1 else ""
-    if cmd == "/start":
-        clear_edit()
-        send(ADMIN_ID, ADMIN_WELCOME, plain=True)
-        return
-    if cmd == "/reset":
-        history.pop(ADMIN_ID, None)
-        send(ADMIN_ID, "Baat-cheet reset ho gayi.")
-        return
-    if cmd == "/schedule":
-        list_schedules()
-        return
-    if cmd == "/cancel":
-        cancel_schedule(arg)
-        return
-
-    if editing is not None:
-        continue_edit(text)
-        return
-
-    # Quotes at the very end of a message = schedule it. No quotes = normal chat.
-    base, tq = split_quoted(text)
-    if tq:
-        if base:
-            start_schedule_text(msg, base, tq)
-            return
-        if continue_schedule(tq):
-            return
-
-    requests.post(f"{TG}/sendChatAction", json={"chat_id": ADMIN_ID, "action": "typing"}, timeout=10)
-    res = analyze(ADMIN_ID, tag_text("", text, True, False), False)
-    if res:
-        cat, reply, _ = res
-        send(ADMIN_ID, reply or FALLBACK.get(cat, "Ji, boliye."))
-    else:
-        send(ADMIN_ID, ERROR_REPLY)
-
-
-def handle_group(msg, sender):
-    chat = msg["chat"]
-    chat_id = chat["id"]
-    text = msg.get("text")
-    if not text:
-        return
-    user_id = sender.get("id")
-    is_admin = user_id == ADMIN_ID
-    msg_id = msg["message_id"]
-    key = (chat_id, user_id)
-
-    parts = text.split()
-    cmd = parts[0].split("@")[0].lower() if parts else ""
-    if cmd == "/start":
-        send(chat_id, WELCOME)
-        return
-    if cmd == "/reset":
-        if is_admin:
-            history.pop(chat_id, None)
-            send(chat_id, "Baat-cheet reset ho gayi.")
-        return
-
-    if is_admin:
-        m = TRIGGER.match(text)
-        if m:
-            admin_command(chat_id, text[m.end():].strip(), msg_id)
-        return
-
-    name = sender.get("first_name", "User")
-    rt = msg.get("reply_to_message") or {}
-    rf = rt.get("from") or {}
-    reply_ctx = ""
-    to_human = False
-    if rt and rf and not rt.get("forum_topic_created") and not rf.get("is_bot"):
-        to_human = True
-        snippet = (rt.get("text") or rt.get("caption") or "[file]").replace("\n", " ")[:80]
-        reply_ctx = f'replying to {rf.get("first_name", "someone")}: "{snippet}"'
-    quiet = to_human and not mentions_bot(text)
-    res = analyze(chat_id, tag_text(name, text, False, True, reply_ctx), True, quiet)
-
-    lp = last_problem.get(key)
-    if lp and time.time() - lp["t"] > 1800:
-        last_problem.pop(key, None)
-        lp = None
-
-    if res is None:
-        # Gemini down: still allow a plain yes after the offer.
-        if lp and yes_no(text) == "yes":
-            ok = forward_to_admin(chat, sender, lp["summary"], lp["text"], lp["link"])
-            last_problem.pop(key, None)
-            send(chat_id, SENT_OK if ok else SENT_FAIL, msg_id)
-        return
-
-    cat, reply, summary = res
-    if cat == "SKIP":
-        return
-
-    if cat == "SEND_TO_ADMIN":
-        if lp:
-            ok = forward_to_admin(chat, sender, summary or lp["summary"], lp["text"], lp["link"])
-        else:
-            ok = forward_to_admin(chat, sender, summary, text, msg_link(chat, msg_id))
-        if ok:
-            last_problem.pop(key, None)
-        send(chat_id, SENT_OK if ok else SENT_FAIL, msg_id)
-        return
-
-    send(chat_id, reply, msg_id)
-    if cat in ("PROBLEM", "ADMIN"):
-        send(chat_id, OFFER)
-        add_history(chat_id, "model", OFFER)
-        last_problem[key] = {
-            "t": time.time(),
-            "summary": summary or text[:200],
-            "text": text,
-            "link": msg_link(chat, msg_id),
-        }
-
-
-def handle(msg):
-    chat = msg["chat"]
-    chat_id = chat["id"]
-    chat_type = chat.get("type")
-
-    new_members = msg.get("new_chat_members")
-    if new_members:
-        if chat_type in ("group", "supergroup"):
-            humans = [m for m in new_members if not m.get("is_bot")]
-            if humans:
-                names = ", ".join(m.get("first_name", "friend") for m in humans)
-                send(chat_id, f"Hello {names}, welcome to Vidya Verse!")
-        return
-
-    sender = msg.get("from", {})
-    if sender.get("is_bot"):
-        return
-
-    if chat_type == "private":
-        handle_private(msg, sender)
-    elif chat_type in ("group", "supergroup"):
-        handle_group(msg, sender)
-    # Channel posts are never read or answered: the channel is only for scheduled files.
-
-
-def poll():
-    offset = 0
-    while True:
-        try:
-            r = requests.get(f"{TG}/getUpdates", params={"offset": offset, "timeout": 30}, timeout=40)
-            for u in r.json().get("result", []):
-                offset = u["update_id"] + 1
-                cq = u.get("callback_query")
-                if cq:
-                    try:
-                        handle_callback(cq)
-                    except Exception as e:
-                        print("Callback error:", e)
-                msg = u.get("message")
-                if msg:
-                    try:
-                        handle(msg)
-                    except Exception as e:
-                        print("Handle error:", e)
-                        if msg.get("chat", {}).get("type") == "private" and msg.get("from", {}).get("id") == ADMIN_ID:
-                            send(ADMIN_ID, f"Bot me ek error aaya: {str(e)[:150]}", plain=True)
-        except Exception as e:
-            print("Poll error:", e)
-            time.sleep(5)
-
-
-class Ping(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b"Bot is running")
-
-    def log_message(self, *args):
-        pass
-
-
-if __name__ == "__main__":
-    threading.Thread(target=scheduler, daemon=True).start()
-    threading.Thread(target=poll, daemon=True).start()
-    port = int(os.environ.get("PORT", 8080))
-    HTTPServer(("0.0.0.0", port), Ping).serve_forever()
+            out.append(ch)
+    return "".join(out)
+
+
+def report_card(sender, problem):
+    """Name + blue tick, blank line, [PROBLEM badge] - user ka apna message. Returns (text, entities)."""
+    name = (sender.get("first_name", "") + " " + sender.get("last_name", "")).strip() or "User"
+    uid = sender.get("id")
+    styled = fancy(name) if FANCY_FONT else name
+    text, ents = styled, []
+    if uid:
+        ents.append({"type": "text_link", "offset": 0, "length": utf16_len(styled), "url": f"tg://user?id={uid}"})
+    text += " "
+    tick_at = utf16_len(text)
+    text += "\u2705"
+    if TICK_EMOJI_ID:
+        ents.append({"type": "custom_emoji", "offset": tick_at, "length": 1, "custom_emoji_id": TICK_EMOJI_ID})
+    text += "\n\n"
+    if PROBLEM_EMOJI_IDS:
+    
