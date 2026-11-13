@@ -359,11 +359,11 @@ def report_variants(sender, problem):
     tick = emoji_cfg["tick"]
     ids = emoji_cfg["problem"]
     tick_html = f' <tg-emoji emoji-id="{tick}">\u2714\uFE0F</tg-emoji>' if tick else ""
-    label_html = "".join(f'<tg-emoji emoji-id="{i}">\U0001F7E9</tg-emoji>' for i in ids) or "\U0001F7E9 <b>PROBLEM</b>"
+    label_html = "".join(f'<tg-emoji emoji-id="{i}">\u26A0\uFE0F</tg-emoji>' for i in ids) or "\u26A0\uFE0F <b>PROBLEM</b>"
     h = HEADING_LEVEL
     rich = f"<h{h}>{en}{tick_html}</h{h}>\n{label_html}\n- {ep}"
     plain_html = f"<b>{en}</b>{tick_html}\n{label_html}\n- {ep}"
-    plain = f"{name}\n\U0001F7E9 PROBLEM\n- {problem}"
+    plain = f"{name}\n\u26A0\uFE0F PROBLEM\n- {problem}"
     return rich, plain_html, plain
 
 
