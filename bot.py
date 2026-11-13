@@ -36,7 +36,7 @@ ADMIN_WELCOME = (
     "Quotes lagaoge to wo message schedule ho jayega. Quotes nahi hue to schedule nahi hoga.\n"
     "Date sirf aaj se 30 din ke andar ki chalegi. Mahina na likho to bot nazdeeki wo tareekh maan lega.\n\n"
     "Bot ek card dega jisme Edit, Cancel aur Fonts button honge. Ye sirf aap use kar sakte ho.\n"
-    "Fonts se poore message ka font badlo, ya sirf kuch shabd ke liye {1 Join Now} likho (1 se 6 font number).\n"
+    "Fonts se poore message ka font badlo, ya sirf kuch shabd ke liye {1 Join Now} likho (1 se 8 font number).\n"
     "Fraction upar-neeche chahiye to [122 / 144] likho.\n\n"
     "/schedule se saare lage hue schedule dekho."
 )
@@ -78,11 +78,11 @@ CATEGORIES
 - CHAT: normal talk, greetings, jokes, everyday chat and small talk that is not a study question. Reply in 2 to 4 short Hinglish lines as usual.
 - STUDY: any question from ANY subject: maths, physics, chemistry, biology, history, geography, polity, English, reasoning, computer theory, general knowledge, a formula, a calculation, a concept or a doubt to be explained. Solve or explain it yourself, never refuse (but never write programming code). Put the whole answer in "reply" in this STUDY FORMAT. The system shows the reply inside a monospace box, so lines are never wrapped:
   * Plain text only. No markdown, no backticks, no bold.
-  * Keep every line short, about 20 characters at most (the box font is big on phones). Break long sentences into several short lines.
+  * Keep every line short, about 30 characters at most. Break long sentences into several short lines.
   * Use real symbols: μ₀ π θ α β Δ Σ ² ³ √ × ÷ ≈ ≠ ≤ ≥ → and subscripts like I₁ x₀. Never write "mu_0", "pi", "sqrt", "^" or "*" for multiply.
   * Every fraction is written as [numerator / denominator] and the system draws it stacked (top and bottom with a line). Put nothing else inside the square brackets, do not nest them, and use ( ) for grouping inside. Never put long text before or after a fraction on the same line (only a short label like \"B =\"); a line like \"Answer:\" stays alone and the fraction goes on the next line, e.g. [μ₀ I R² / 2 (R² + x²)³ᐟ²]. For a fractional power write it small like ³ᐟ², not with "^".
   * Layout: first the formula or direct answer, then the meaning of each symbol, one per line ("I = current"), then "Step 1:", "Step 2:" ... one idea per step for calculations, and the last line "Answer: ...". A simple fact needs only a few short lines, no steps.
-  * The explanation words must be Hinglish (like \"current\", \"loop ka radius\", \"pehle ... phir ...\"), simple and clear, not English sentences. Steps must be written in Hinglish too and each step on ONE line, like \"Step 1: +q ka field likho\". At most ONE fraction per line, never two fractions with × between them on one line (split it into steps, one fraction per line). The whole stacked fraction must be 22 characters wide at most. Keep numerator and denominator short (14 characters at most each, use symbols). Do not repeat a formula that is already shown; the last line \"Answer: ...\" is only for the final value or one short result. No greeting line.
+  * The explanation words must be Hinglish (like \"current\", \"loop ka radius\", \"pehle ... phir ...\"), simple and clear, not English sentences. Steps must be written in Hinglish too and each step on ONE line, like \"Step 1: +q ka field likho\". At most ONE fraction per line, never two fractions with × between them on one line (split it into steps, one fraction per line). The whole stacked fraction must be 32 characters wide at most. Keep numerator and denominator short (14 characters at most each, use symbols). Do not repeat a formula that is already shown; the last line \"Answer: ...\" is only for the final value or one short result. No greeting line.
 - ABOUT_ADMIN: the person asks who the admin is, who runs the group, the admin's name, or (if tagged [VERIFIED ADMIN]) asks whether he himself is the Admin.
 - PROBLEM: the person reports a problem with an app, website, account, payment, course or any service. In "summary" write only the actual problem in 1 to 2 short Hinglish lines from the person's own point of view (like "Meri app khul nahi rahi"), without the person's name and never as an English sentence like "User is asking". In "reply", tell them in your own words that you cannot do anything about it yourself, so they should talk to Admin ji, and that Admin will try to fix it as soon as possible. Do not offer to forward it yourself, the system does that.
 - SEND_TO_ADMIN: the person asks or agrees that their problem or message should be passed to Admin. Examples: "haan bhej do", "ok", "admin tak pahuncha do", "ye zaroori hai admin ko batao", "admin ko ye bol do ...". A short "haan"/"ok"/"kar do" right after Lumi offered to send the problem to Admin also counts. In "summary" write exactly what should reach Admin: the person's real problem or message, taken from the recent chat, in 1 to 3 short Hinglish lines from the person's own point of view, without the person's name and never as an English sentence like "User is asking". Keep "reply" empty, the system confirms by itself. If the person refuses ("nahi", "rehne do"), use CHAT and reply politely instead.
@@ -523,23 +523,29 @@ def _fmap(upper, lower, digit=None, special=None):
     return m
 
 
+_SC = dict(zip("abcdefghijklmnopqrstuvwxyz", "ᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘǫʀꜱᴛᴜᴠᴡxʏᴢ"))
 FONT_MAPS = {
     1: _fmap(0x1D400, 0x1D41A, 0x1D7CE),
-    2: _fmap(0x1D434, 0x1D44E, None, {"h": "ℎ"}),
-    3: _fmap(0x1D670, 0x1D68A, 0x1D7F6),
-    4: _fmap(0x1D4D0, 0x1D4EA),
-    5: _fmap(0x1D504, 0x1D51E, None, {"C": "ℭ", "H": "ℌ", "I": "ℑ", "R": "ℜ", "Z": "ℨ"}),
-    6: _fmap(0x1D538, 0x1D552, 0x1D7D8, {"C": "ℂ", "H": "ℍ", "N": "ℕ", "P": "ℙ",
-                                        "Q": "ℚ", "R": "ℝ", "Z": "ℤ"}),
+    2: _fmap(0x1D670, 0x1D68A, 0x1D7F6),
+    3: _fmap(0x1D4D0, 0x1D4EA),
+    4: _fmap(0x1D538, 0x1D552, 0x1D7D8, {"C": "\u2102", "H": "\u210D", "N": "\u2115", "P": "\u2119",
+                                        "Q": "\u211A", "R": "\u211D", "Z": "\u2124"}),
+    5: _fmap(0x1D5D4, 0x1D5EE, 0x1D7EC),
+    6: _fmap(0x1D5A0, 0x1D5BA, 0x1D7E2),
+    7: _fmap(0x1D49C, 0x1D4B6, None, {"B": "\u212C", "E": "\u2130", "F": "\u2131", "H": "\u210B",
+                                     "I": "\u2110", "L": "\u2112", "M": "\u2133", "R": "\u211B",
+                                     "e": "\u212F", "g": "\u210A", "o": "\u2134"}),
+    8: dict(_SC),
 }
-FONT_NAMES = {1: "Serif Bold", 2: "Serif Italic", 3: "Mono", 4: "Script", 5: "Gothic", 6: "Double"}
+FONT_NAMES = {1: "Serif Bold", 2: "Mono", 3: "Script", 4: "Double", 5: "Sans Bold", 6: "Sans",
+              7: "Script Light", 8: "Small Caps"}
 
 
 def font_label(n):
     return "".join(FONT_MAPS[n].get(c, c) for c in FONT_NAMES[n])
 
 
-BRACE_RE = re.compile(r"\{\s*([1-6])\s+([^{}]*?)\s*\}")
+BRACE_RE = re.compile(r"\{\s*([1-8])\s+([^{}]*?)\s*\}")
 
 
 def plan_for(text, base):
@@ -609,7 +615,7 @@ def stack_line(line):
         return None
     seg = line[pos:]
     top, mid, bot = top + " " * len(seg), mid + seg, bot + " " * len(seg)
-    if max(len(top), len(mid), len(bot)) > 22:
+    if max(len(top), len(mid), len(bot)) > 32:
         return None  # too wide for a phone screen: it would wrap and break the drawing
     return "\n".join(x.rstrip() for x in (top, mid, bot))
 
@@ -661,7 +667,7 @@ def stack_with_entities(text, ents):
         new_ents.append(ne_)
     for os_, oe, ns, ne, rep_ in spans:
         if rep_:
-            new_ents.append({"type": "code", "offset": ns, "length": ne - ns})
+            new_ents.append({"type": "pre", "offset": ns, "length": ne - ns})
     new_ents.sort(key=lambda e: e["offset"])
     return "\n".join(out), new_ents
 
@@ -698,12 +704,12 @@ def send_box(chat_id, text, reply_to=None):
                 lines.append(st)
                 continue
             ln = unbracket(ln)
-        if len(ln) <= 22:
+        if len(ln) <= 32:
             lines.append(ln)
         else:
-            lines += textwrap.wrap(ln, 22, subsequent_indent="  ") or [""]
+            lines += textwrap.wrap(ln, 32, subsequent_indent="  ") or [""]
     body = "\n".join(lines)[:3500]
-    payload = {"chat_id": chat_id, "text": body, "entities": [{"type": "code", "offset": 0, "length": utf16_len(body)}]}
+    payload = {"chat_id": chat_id, "text": "<pre>" + html.escape(body, quote=False) + "</pre>", "parse_mode": "HTML"}
     if reply_to and chat_id < 0:
         payload["reply_to_message_id"] = reply_to
         payload["allow_sending_without_reply"] = True
@@ -894,7 +900,7 @@ def sched_markup(s):
 def font_markup(s):
     cur = s.get("font", 0)
     rows, row = [], []
-    for n in range(1, 7):
+    for n in range(1, 9):
         mark = "\u2713 " if cur == n else ""
         row.append({"text": f"{mark}{n}. {font_label(n)}", "callback_data": f"font:{s['id']}:{n}"})
         if len(row) == 2:
