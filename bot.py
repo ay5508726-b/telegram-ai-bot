@@ -77,9 +77,9 @@ CATEGORIES
 - CHAT: normal talk, greetings, jokes, everyday chat and small talk that is not a study question. Reply in 2 to 4 short Hinglish lines as usual.
 - STUDY: any question from ANY subject: maths, physics, chemistry, biology, history, geography, polity, English, reasoning, computer theory, general knowledge, a formula, a calculation, a concept or a doubt to be explained. Solve or explain it yourself, never refuse (but never write programming code). Put the whole answer in "reply" in this STUDY FORMAT. The system shows the reply inside a monospace box, so lines are never wrapped:
   * Plain text only. No markdown, no backticks, no bold.
-  * Keep every line short, about 34 characters at most. Break long sentences into several short lines.
+  * Keep every line short, about 28 characters at most. Break long sentences into several short lines.
   * Use real symbols: μ₀ π θ α β Δ Σ ² ³ √ × ÷ ≈ ≠ ≤ ≥ → and subscripts like I₁ x₀. Never write "mu_0", "pi", "sqrt", "^" or "*" for multiply.
-  * Every fraction is written as [numerator / denominator] and the system draws it stacked (top and bottom with a line). Put nothing else inside the square brackets, do not nest them, and use ( ) for grouping inside, e.g. [μ₀ I R² / 2 (R² + x²)³ᐟ²]. For a fractional power write it small like ³ᐟ², not with "^".
+  * Every fraction is written as [numerator / denominator] and the system draws it stacked (top and bottom with a line). Put nothing else inside the square brackets, do not nest them, and use ( ) for grouping inside. Never put long text before or after a fraction on the same line (only a short label like \"B =\"); a line like \"Answer:\" stays alone and the fraction goes on the next line, e.g. [μ₀ I R² / 2 (R² + x²)³ᐟ²]. For a fractional power write it small like ³ᐟ², not with "^".
   * Layout: first the formula or direct answer, then the meaning of each symbol, one per line ("I = current"), then "Step 1:", "Step 2:" ... one idea per step for calculations, and the last line "Answer: ...". A simple fact needs only a few short lines, no steps.
   * Hinglish for the words, no greeting line.
 - ABOUT_ADMIN: the person asks who the admin is, who runs the group, the admin's name, or (if tagged [VERIFIED ADMIN]) asks whether he himself is the Admin.
@@ -651,7 +651,7 @@ def stack_with_entities(text, ents):
         new_ents.append(ne_)
     for os_, oe, ns, ne, rep_ in spans:
         if rep_:
-            new_ents.append({"type": "pre", "offset": ns, "length": ne - ns})
+            new_ents.append({"type": "code", "offset": ns, "length": ne - ns})
     new_ents.sort(key=lambda e: e["offset"])
     return "\n".join(out), new_ents
 
@@ -681,7 +681,7 @@ def strip_ji(text, names):
 def send_box(chat_id, text, reply_to=None):
     """Study answers: the whole reply inside one monospace box, fractions stacked."""
     body = stack_plain(text.replace("`", "").strip())[:3500]
-    payload = {"chat_id": chat_id, "text": "<pre>" + html.escape(body, quote=False) + "</pre>", "parse_mode": "HTML"}
+    payload = {"chat_id": chat_id, "text": body, "entities": [{"type": "code", "offset": 0, "length": utf16_len(body)}]}
     if reply_to and chat_id < 0:
         payload["reply_to_message_id"] = reply_to
         payload["allow_sending_without_reply"] = True
@@ -860,11 +860,13 @@ def card_ents(s, text):
 
 
 def sched_markup(s):
-    return {"inline_keyboard": [[
-        {"text": "\u2002\u2002Edit\u2002\u2002", "callback_data": f"edit:{s['id']}"},
-        {"text": "\u2002\u2002Cancel\u2002\u2002", "callback_data": f"cancel:{s['id']}"},
-        {"text": "\u2002\u2002Fonts\u2002\u2002", "callback_data": f"fonts:{s['id']}"},
-    ]]}
+    return {"inline_keyboard": [
+        [
+            {"text": "Edit", "callback_data": f"edit:{s['id']}"},
+            {"text": "Cancel", "callback_data": f"cancel:{s['id']}"},
+        ],
+        [{"text": "Fonts", "callback_data": f"fonts:{s['id']}"}],
+    ]}
 
 
 def font_markup(s):
