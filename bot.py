@@ -34,7 +34,9 @@ ADMIN_WELCOME = (
     'Aaj ki class ke notes "9:43 pm 12 Nov"\n\n'
     "Quotes lagaoge to wo message schedule ho jayega. Quotes nahi hue to schedule nahi hoga.\n"
     "Date sirf aaj se 30 din ke andar ki chalegi. Mahina na likho to bot nazdeeki wo tareekh maan lega.\n\n"
-    "Bot ek card dega jisme Edit aur Cancel button honge. Ye sirf aap use kar sakte ho.\n\n"
+    "Bot ek card dega jisme Edit, Cancel aur Fonts button honge. Ye sirf aap use kar sakte ho.\n"
+    "Fonts se poore message ka font badlo, ya sirf kuch shabd ke liye {1 Join Now} likho (1 se 6 font number).\n"
+    "Fraction upar-neeche chahiye to [122 / 144] likho.\n\n"
     "/schedule se saare lage hue schedule dekho."
 )
 PROMO_TEXT = (
@@ -72,8 +74,14 @@ HOW TO WORK
 3. Write "reply" in your own natural words, based on that understanding. Do not copy ready-made lines.
 
 CATEGORIES
-- CHAT: normal talk, doubts, studies, general knowledge, everyday questions. Answer the question properly and simply. This includes ALL study questions: maths, physics, chemistry, biology, reasoning, English, history, science and every other subject. Solve them yourself and give the final answer with short clear steps in plain text (for example "122/144 = 61/72 = 0.847 approx"). Never refuse a calculation or a study question.
-  How to write maths and science so a student can read it easily: use real symbols, never code-style text. Use μ₀, π, θ, Δ, ², ³, √, ×, ÷, ≈, ≤, ≥, →, and subscripts like I₁, x₀. NEVER write "mu_0", "*", "^", "sqrt" or "pi". Write a big formula on its own line, using a plain division line like: B = μ₀ I R² / [2 (R² + x²)^(3/2)] must instead be written as B = μ₀ I R² / (2 (R² + x²)√(R² + x²)), and powers only as ² or ³ (for other powers write the word, like "(R² + x²) ka 3/2 power"). Then, on the next lines, explain every symbol in simple words, one per line (μ₀ = vacuum ki permeability, I = current, R = loop ka radius, x = centre se axis par doori). For a calculation or any long answer give numbered steps: "Step 1:", "Step 2:" ... one idea per step, then a last line "Answer: ...". Start with the direct answer or formula when the question is a simple "formula kya hai"; then explain. Keep a friendly Hinglish tone.
+- CHAT: normal talk, greetings, jokes, everyday chat and small talk that is not a study question. Reply in 2 to 4 short Hinglish lines as usual.
+- STUDY: any question from ANY subject: maths, physics, chemistry, biology, history, geography, polity, English, reasoning, computer theory, general knowledge, a formula, a calculation, a concept or a doubt to be explained. Solve or explain it yourself, never refuse (but never write programming code). Put the whole answer in "reply" in this STUDY FORMAT. The system shows the reply inside a monospace box, so lines are never wrapped:
+  * Plain text only. No markdown, no backticks, no bold.
+  * Keep every line short, about 34 characters at most. Break long sentences into several short lines.
+  * Use real symbols: μ₀ π θ α β Δ Σ ² ³ √ × ÷ ≈ ≠ ≤ ≥ → and subscripts like I₁ x₀. Never write "mu_0", "pi", "sqrt", "^" or "*" for multiply.
+  * Every fraction is written as [numerator / denominator] and the system draws it stacked (top and bottom with a line). Put nothing else inside the square brackets, do not nest them, and use ( ) for grouping inside, e.g. [μ₀ I R² / 2 (R² + x²)³ᐟ²]. For a fractional power write it small like ³ᐟ², not with "^".
+  * Layout: first the formula or direct answer, then the meaning of each symbol, one per line ("I = current"), then "Step 1:", "Step 2:" ... one idea per step for calculations, and the last line "Answer: ...". A simple fact needs only a few short lines, no steps.
+  * Hinglish for the words, no greeting line.
 - ABOUT_ADMIN: the person asks who the admin is, who runs the group, the admin's name, or (if tagged [VERIFIED ADMIN]) asks whether he himself is the Admin.
 - PROBLEM: the person reports a problem with an app, website, account, payment, course or any service. In "summary" write only the actual problem in 1 to 2 short Hinglish lines from the person's own point of view (like "Meri app khul nahi rahi"), without the person's name and never as an English sentence like "User is asking". In "reply", tell them in your own words that you cannot do anything about it yourself, so they should talk to Admin ji, and that Admin will try to fix it as soon as possible. Do not offer to forward it yourself, the system does that.
 - SEND_TO_ADMIN: the person asks or agrees that their problem or message should be passed to Admin. Examples: "haan bhej do", "ok", "admin tak pahuncha do", "ye zaroori hai admin ko batao", "admin ko ye bol do ...". A short "haan"/"ok"/"kar do" right after Lumi offered to send the problem to Admin also counts. In "summary" write exactly what should reach Admin: the person's real problem or message, taken from the recent chat, in 1 to 3 short Hinglish lines from the person's own point of view, without the person's name and never as an English sentence like "User is asking". Keep "reply" empty, the system confirms by itself. If the person refuses ("nahi", "rehne do"), use CHAT and reply politely instead.
@@ -89,10 +97,11 @@ IMPORTANT
 - You cannot send anything to Admin yourself. Only the category SEND_TO_ADMIN makes the system send it. So in every other category never say that you are sending, forwarding or have sent something to Admin.
 
 STYLE
-- Simple Hinglish (Hindi in English letters mixed with easy English words), like a friendly senior. 2 to 4 short lines for normal talk. For a maths, physics or other study solution you may write as many short lines as needed, up to about 15, with one step per line and a blank line between the formula, the symbol meanings and the steps. Never use markdown symbols like ** or #, but plain "Step 1:" lists and real maths symbols are good.
+- Simple Hinglish (Hindi in English letters mixed with easy English words), like a friendly senior. 2 to 4 short lines for normal talk, no markdown, no bullet lists. Study answers follow the STUDY FORMAT above instead.
+- Use "ji" ONLY after the word Admin ("Admin ji"). Never add "ji" after the name of any other person or member, just say the name (for example "Amrish", "Harsh").
 - Sound natural and human. Never mention Gemini, Google, AI models or "as an AI". If asked who you are, say you are Lumi, the Vidya Verse helper bot.
 - Use one or two fitting emojis in most replies (for example 😊 🙏 👍 📚 ✅), naturally and not too many.
-- Never give links or URLs. Never write programming code (maths and science solving is allowed and encouraged). Never suggest or provide apps, websites, files or downloads.
+- Never give links or URLs. Never write programming code (solving maths and science is allowed). Never suggest or provide apps, websites, files or downloads.
 """
 
 GROUP_NOTE = """
@@ -111,7 +120,7 @@ SCHEMA = {
         "analysis": {"type": "STRING"},
         "category": {
             "type": "STRING",
-            "enum": ["CHAT", "ABOUT_ADMIN", "PROBLEM", "SEND_TO_ADMIN", "SCAM", "ADMIN", "SKIP"],
+            "enum": ["CHAT", "STUDY", "ABOUT_ADMIN", "PROBLEM", "SEND_TO_ADMIN", "SCAM", "ADMIN", "SKIP"],
         },
         "summary": {"type": "STRING"},
         "reply": {"type": "STRING"},
@@ -132,7 +141,7 @@ TIME_SCHEMA = {
     "propertyOrdering": ["ok", "datetime", "caption", "question"],
 }
 
-CATEGORIES = {"CHAT", "ABOUT_ADMIN", "PROBLEM", "SEND_TO_ADMIN", "SCAM", "ADMIN", "SKIP"}
+CATEGORIES = {"CHAT", "STUDY", "ABOUT_ADMIN", "PROBLEM", "SEND_TO_ADMIN", "SCAM", "ADMIN", "SKIP"}
 FALLBACK = {
     "PROBLEM": PROBLEM_REPLY,
     "SCAM": SCAM_REPLY,
@@ -278,7 +287,10 @@ def analyze(chat_id, text, is_group, quiet=False):
             return "SKIP", "", ""
         cat, reply = "CHAT", reply or "Ji, boliye, kya poochna hai?"
 
-    if quiet and cat in ("CHAT", "ABOUT_ADMIN"):
+    if cat == "STUDY":
+        reply = reply.replace("`", "")
+
+    if quiet and cat in ("CHAT", "STUDY", "ABOUT_ADMIN"):
         # The member is talking to another member, not to Lumi.
         h.pop()
         return "SKIP", "", ""
@@ -496,6 +508,188 @@ def keep_entities(original, base, entities):
     return [e for e in entities if e.get("offset", 0) + e.get("length", 0) <= limit]
 
 
+# ---------------- fonts and stacked maths ----------------
+
+def _fmap(upper, lower, digit=None, special=None):
+    m = {}
+    for i in range(26):
+        m[chr(65 + i)] = chr(upper + i)
+        m[chr(97 + i)] = chr(lower + i)
+    if digit:
+        for i in range(10):
+            m[str(i)] = chr(digit + i)
+    m.update(special or {})
+    return m
+
+
+FONT_MAPS = {
+    1: _fmap(0x1D400, 0x1D41A, 0x1D7CE),
+    2: _fmap(0x1D434, 0x1D44E, None, {"h": "ℎ"}),
+    3: _fmap(0x1D670, 0x1D68A, 0x1D7F6),
+    4: _fmap(0x1D4D0, 0x1D4EA),
+    5: _fmap(0x1D504, 0x1D51E, None, {"C": "ℭ", "H": "ℌ", "I": "ℑ", "R": "ℜ", "Z": "ℨ"}),
+    6: _fmap(0x1D538, 0x1D552, 0x1D7D8, {"C": "ℂ", "H": "ℍ", "N": "ℕ", "P": "ℙ",
+                                        "Q": "ℚ", "R": "ℝ", "Z": "ℤ"}),
+}
+FONT_NAMES = {1: "Serif Bold", 2: "Serif Italic", 3: "Mono", 4: "Script", 5: "Gothic", 6: "Double"}
+
+
+def font_label(n):
+    return "".join(FONT_MAPS[n].get(c, c) for c in FONT_NAMES[n])
+
+
+BRACE_RE = re.compile(r"\{\s*([1-6])\s+([^{}]*?)\s*\}")
+
+
+def plan_for(text, base):
+    """One entry per character: a font number (0 = normal), or None when the character is dropped."""
+    plan = [base] * len(text)
+    for m in BRACE_RE.finditer(text):
+        for i in range(m.start(), m.end()):
+            plan[i] = None
+        for i in range(m.start(2), m.end(2)):
+            plan[i] = int(m.group(1))
+    return plan
+
+
+def restyle(text, ents, plan):
+    out, omap, o, n = [], {}, 0, 0
+    for ch, f in zip(text, plan):
+        omap[o] = n
+        if f is not None:
+            c = FONT_MAPS[f].get(ch, ch) if f else ch
+            out.append(c)
+            n += utf16_len(c)
+        o += utf16_len(ch)
+    omap[o] = n
+    new = []
+    for e in ents or []:
+        a = e.get("offset", 0)
+        b = a + e.get("length", 0)
+        if a in omap and b in omap and omap[b] > omap[a]:
+            ne = dict(e)
+            ne["offset"], ne["length"] = omap[a], omap[b] - omap[a]
+            new.append(ne)
+    return "".join(out), new
+
+
+FRAC_RE = re.compile(r"\[([^\[\]]+)\]")
+
+
+def split_frac(inner):
+    depth = 0
+    for i, ch in enumerate(inner):
+        if ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth -= 1
+        elif ch == "/" and depth == 0:
+            return inner[:i].strip(), inner[i + 1:].strip()
+    return None
+
+
+def stack_line(line):
+    """'B = [a / b]' -> three lines with the fraction drawn top / bar / bottom. None if no fraction."""
+    top = mid = bot = ""
+    pos = 0
+    found = False
+    for m in FRAC_RE.finditer(line):
+        sp = split_frac(m.group(1))
+        if not sp or not sp[0] or not sp[1]:
+            continue
+        seg = line[pos:m.start()]
+        top, mid, bot = top + " " * len(seg), mid + seg, bot + " " * len(seg)
+        num, den = sp
+        w = max(len(num), len(den)) + 2
+        top, mid, bot = top + num.center(w), mid + "─" * w, bot + den.center(w)
+        pos = m.end()
+        found = True
+    if not found:
+        return None
+    seg = line[pos:]
+    top, mid, bot = top + " " * len(seg), mid + seg, bot + " " * len(seg)
+    return "\n".join(x.rstrip() for x in (top, mid, bot))
+
+
+def stack_plain(text):
+    return "\n".join((stack_line(l) or l) for l in text.split("\n"))
+
+
+def stack_with_entities(text, ents):
+    """Stack [a / b] fractions; every stacked line becomes a monospace (pre) block."""
+    spans, out, o, n = [], [], 0, 0
+    for line in text.split("\n"):
+        st = stack_line(line)
+        new = st if st else line
+        ol, nl = utf16_len(line), utf16_len(new)
+        spans.append((o, o + ol, n, n + nl, bool(st)))
+        out.append(new)
+        o += ol + 1
+        n += nl + 1
+    if not any(sp[4] for sp in spans):
+        return text, list(ents or [])
+
+    def conv(x):
+        for os_, oe, ns, ne, rep_ in spans:
+            if os_ <= x <= oe:
+                if rep_:
+                    return ns if x == os_ else (ne if x == oe else None)
+                return ns + (x - os_)
+        return None
+
+    new_ents = []
+    for e in ents or []:
+        a = e.get("offset", 0)
+        b = a + e.get("length", 0)
+        if any(sp[4] and a < sp[1] and b > sp[0] for sp in spans):
+            continue
+        na, nb = conv(a), conv(b)
+        if na is None or nb is None or nb <= na:
+            continue
+        ne_ = dict(e)
+        ne_["offset"], ne_["length"] = na, nb - na
+        new_ents.append(ne_)
+    for os_, oe, ns, ne, rep_ in spans:
+        if rep_:
+            new_ents.append({"type": "pre", "offset": ns, "length": ne - ns})
+    new_ents.sort(key=lambda e: e["offset"])
+    return "\n".join(out), new_ents
+
+
+def refresh_style(s):
+    """Rebuild the text to post from the Admin's original text: {n word} fonts, the Fonts button, [a / b] fractions."""
+    src = s.get("src", "")
+    is_text = s["kind"] == "text"
+    t, e = restyle(src, s.get("src_ents"), plan_for(src, s.get("font", 0)))
+    t, e = stack_with_entities(t, e)
+    limit = 4000 if is_text else 1024
+    t = t[:limit]
+    cut = utf16_len(t)
+    e = [x for x in e if x["offset"] + x["length"] <= cut]
+    s["text" if is_text else "caption"] = t
+    s["entities"] = e
+    s["styled"] = bool(s.get("font")) or t != src
+
+
+def strip_ji(text, names):
+    for n in names:
+        if n and n.lower() != "admin":
+            text = re.sub(rf"(?i)\b{re.escape(n)}\s+ji\b", n, text)
+    return text
+
+
+def send_box(chat_id, text, reply_to=None):
+    """Study answers: the whole reply inside one monospace box, fractions stacked."""
+    body = stack_plain(text.replace("`", "").strip())[:3500]
+    payload = {"chat_id": chat_id, "text": "<pre>" + html.escape(body, quote=False) + "</pre>", "parse_mode": "HTML"}
+    if reply_to and chat_id < 0:
+        payload["reply_to_message_id"] = reply_to
+        payload["allow_sending_without_reply"] = True
+    res = api("sendMessage", payload)
+    if not res.get("ok"):
+        send(chat_id, body, reply_to, plain=True)
+
+
 def local_parse(text):
     """Plain fallback when Gemini does not answer: '9:43 pm 12 Nov', '5 pm 15', '10:15 pm 13/11', '9 pm kal'."""
     now = now_ist()
@@ -641,38 +835,91 @@ def quoted_when(dt):
     return f"{dt.strftime('%I:%M %p').lstrip('0').lower()} {dt.day} {dt.strftime('%b')}"
 
 
+def _preview(s):
+    if not s.get("styled"):
+        return "", []
+    t = s.get("text" if s["kind"] == "text" else "caption", "")
+    ents = s.get("entities", [])
+    if len(t) > 3000:
+        t = t[:3000]
+        cut = utf16_len(t)
+        ents = [e for e in ents if e["offset"] + e["length"] <= cut]
+    return "\n\n" + t, ents
+
+
 def sched_text(s, header="Schedule ho gaya"):
-    return f"{header}\n{short_when(s['when'])}"
+    return f"{header}\n{short_when(s['when'])}" + _preview(s)[0]
+
+
+def card_ents(s, text):
+    ptext, pents = _preview(s)
+    if not ptext or not text.endswith(ptext):
+        return []
+    base = utf16_len(text) - utf16_len(ptext) + 2
+    return [{**e, "offset": e["offset"] + base} for e in pents]
 
 
 def sched_markup(s):
     return {"inline_keyboard": [[
-        {"text": "Edit", "callback_data": f"edit:{s['id']}"},
-        {"text": "Cancel", "callback_data": f"cancel:{s['id']}"},
+        {"text": "\u2002\u2002Edit\u2002\u2002", "callback_data": f"edit:{s['id']}"},
+        {"text": "\u2002\u2002Cancel\u2002\u2002", "callback_data": f"cancel:{s['id']}"},
+        {"text": "\u2002\u2002Fonts\u2002\u2002", "callback_data": f"fonts:{s['id']}"},
     ]]}
 
 
-def update_conf(s, text, buttons):
+def font_markup(s):
+    cur = s.get("font", 0)
+    rows, row = [], []
+    for n in range(1, 7):
+        mark = "\u2713 " if cur == n else ""
+        row.append({"text": f"{mark}{n}. {font_label(n)}", "callback_data": f"font:{s['id']}:{n}"})
+        if len(row) == 2:
+            rows.append(row)
+            row = []
+    rows.append([
+        {"text": ("\u2713 " if not cur else "") + "Normal", "callback_data": f"font:{s['id']}:0"},
+        {"text": "\u2190 Back", "callback_data": f"back:{s['id']}"},
+    ])
+    return {"inline_keyboard": rows}
+
+
+def update_conf(s, text, buttons, markup=None):
     if not s.get("conf_mid"):
         return
-    markup = sched_markup(s) if buttons else {"inline_keyboard": []}
-    api("editMessageText", {
-        "chat_id": ADMIN_ID, "message_id": s["conf_mid"], "text": text, "reply_markup": markup,
-    })
+    if markup is None:
+        markup = sched_markup(s) if buttons else {"inline_keyboard": []}
+    payload = {"chat_id": ADMIN_ID, "message_id": s["conf_mid"], "text": text, "reply_markup": markup}
+    ents = card_ents(s, text)
+    if ents:
+        payload["entities"] = ents
+    res = api("editMessageText", payload)
+    if ents and not res.get("ok") and "not modified" not in str(res.get("description", "")):
+        payload.pop("entities")
+        api("editMessageText", payload)
 
 
 def add_schedule(kind, dt, msg_id=None, caption="", text="", entities=None):
     global next_id
     with sched_lock:
         s = {"id": next_id, "when": dt, "kind": kind, "msg_id": msg_id, "caption": caption,
-             "text": text, "entities": entities or [], "conf_mid": None}
+             "text": text, "entities": entities or [], "conf_mid": None,
+             "src": text if kind == "text" else caption, "src_ents": list(entities or []), "font": 0}
+        refresh_style(s)
         schedules.append(s)
         next_id += 1
     return s
 
 
 def show_schedule(s):
-    res = api("sendMessage", {"chat_id": ADMIN_ID, "text": sched_text(s), "reply_markup": sched_markup(s)})
+    text = sched_text(s)
+    payload = {"chat_id": ADMIN_ID, "text": text, "reply_markup": sched_markup(s)}
+    ents = card_ents(s, text)
+    if ents:
+        payload["entities"] = ents
+    res = api("sendMessage", payload)
+    if ents and not res.get("ok"):
+        payload.pop("entities")
+        res = api("sendMessage", payload)
     s["conf_mid"] = (res.get("result") or {}).get("message_id")
 
 
@@ -863,7 +1110,9 @@ def handle_callback(cq):
             "callback_query_id": cid, "text": "Ye button sirf Admin ke liye hai.", "show_alert": True,
         })
         return
-    action, _, sid = data.partition(":")
+    parts = data.split(":")
+    action = parts[0]
+    sid = parts[1] if len(parts) > 1 else ""
     s = find_schedule(int(sid)) if sid.isdigit() else None
     if not s:
         api("answerCallbackQuery", {
@@ -884,6 +1133,23 @@ def handle_callback(cq):
             editing = None
         update_conf(s, sched_text(s, "Ye schedule cancel kar diya gaya"), False)
         api("answerCallbackQuery", {"callback_query_id": cid, "text": "Schedule cancel ho gaya."})
+    elif action == "fonts":
+        api("answerCallbackQuery", {"callback_query_id": cid})
+        update_conf(s, sched_text(s), True, font_markup(s))
+    elif action == "back":
+        api("answerCallbackQuery", {"callback_query_id": cid})
+        update_conf(s, sched_text(s), True)
+    elif action == "font":
+        n = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 0
+        if n not in FONT_MAPS and n != 0:
+            n = 0
+        if not (s.get("src") or "").strip():
+            api("answerCallbackQuery", {"callback_query_id": cid, "text": "Is me text ya caption nahi hai, font kis par lagega.", "show_alert": True})
+            return
+        s["font"] = n
+        refresh_style(s)
+        api("answerCallbackQuery", {"callback_query_id": cid})
+        update_conf(s, sched_text(s), True, font_markup(s))
     elif action == "edit":
         editing = s["id"]
         awaiting = None
@@ -961,7 +1227,10 @@ def handle_private(msg, sender):
     res = analyze(ADMIN_ID, tag_text("", text, True, False), False)
     if res:
         cat, reply, _ = res
-        send(ADMIN_ID, reply or FALLBACK.get(cat, "Ji, boliye."))
+        if cat == "STUDY" and reply:
+            send_box(ADMIN_ID, reply)
+        else:
+            send(ADMIN_ID, reply or FALLBACK.get(cat, "Ji, boliye."))
     else:
         send(ADMIN_ID, ERROR_REPLY + (f"\n(Wajah: {last_err})" if last_err else ""), plain=True)
 
@@ -1034,7 +1303,11 @@ def handle_group(msg, sender):
         send(chat_id, SENT_OK if ok else SENT_FAIL, msg_id)
         return
 
-    send(chat_id, reply, msg_id)
+    reply = strip_ji(reply, [name, rf.get("first_name", "")])
+    if cat == "STUDY":
+        send_box(chat_id, reply, msg_id)
+    else:
+        send(chat_id, reply, msg_id)
     if cat in ("PROBLEM", "ADMIN"):
         send(chat_id, OFFER)
         add_history(chat_id, "model", OFFER)
