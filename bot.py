@@ -2,6 +2,7 @@ import html
 import json
 import os
 import re
+import textwrap
 import threading
 import time
 from datetime import datetime, timedelta, timezone
@@ -77,11 +78,11 @@ CATEGORIES
 - CHAT: normal talk, greetings, jokes, everyday chat and small talk that is not a study question. Reply in 2 to 4 short Hinglish lines as usual.
 - STUDY: any question from ANY subject: maths, physics, chemistry, biology, history, geography, polity, English, reasoning, computer theory, general knowledge, a formula, a calculation, a concept or a doubt to be explained. Solve or explain it yourself, never refuse (but never write programming code). Put the whole answer in "reply" in this STUDY FORMAT. The system shows the reply inside a monospace box, so lines are never wrapped:
   * Plain text only. No markdown, no backticks, no bold.
-  * Keep every line short, about 28 characters at most. Break long sentences into several short lines.
+  * Keep every line short, about 22 characters at most (the box font is big on phones). Break long sentences into several short lines.
   * Use real symbols: μ₀ π θ α β Δ Σ ² ³ √ × ÷ ≈ ≠ ≤ ≥ → and subscripts like I₁ x₀. Never write "mu_0", "pi", "sqrt", "^" or "*" for multiply.
   * Every fraction is written as [numerator / denominator] and the system draws it stacked (top and bottom with a line). Put nothing else inside the square brackets, do not nest them, and use ( ) for grouping inside. Never put long text before or after a fraction on the same line (only a short label like \"B =\"); a line like \"Answer:\" stays alone and the fraction goes on the next line, e.g. [μ₀ I R² / 2 (R² + x²)³ᐟ²]. For a fractional power write it small like ³ᐟ², not with "^".
   * Layout: first the formula or direct answer, then the meaning of each symbol, one per line ("I = current"), then "Step 1:", "Step 2:" ... one idea per step for calculations, and the last line "Answer: ...". A simple fact needs only a few short lines, no steps.
-  * Hinglish for the words, no greeting line.
+  * The explanation words must be Hinglish (like \"current\", \"loop ka radius\", \"pehle ... phir ...\"), simple and clear, not English sentences. Keep numerator and denominator short (14 characters at most each, use symbols). Do not repeat a formula that is already shown; the last line \"Answer: ...\" is only for the final value or one short result. No greeting line.
 - ABOUT_ADMIN: the person asks who the admin is, who runs the group, the admin's name, or (if tagged [VERIFIED ADMIN]) asks whether he himself is the Admin.
 - PROBLEM: the person reports a problem with an app, website, account, payment, course or any service. In "summary" write only the actual problem in 1 to 2 short Hinglish lines from the person's own point of view (like "Meri app khul nahi rahi"), without the person's name and never as an English sentence like "User is asking". In "reply", tell them in your own words that you cannot do anything about it yourself, so they should talk to Admin ji, and that Admin will try to fix it as soon as possible. Do not offer to forward it yourself, the system does that.
 - SEND_TO_ADMIN: the person asks or agrees that their problem or message should be passed to Admin. Examples: "haan bhej do", "ok", "admin tak pahuncha do", "ye zaroori hai admin ko batao", "admin ko ye bol do ...". A short "haan"/"ok"/"kar do" right after Lumi offered to send the problem to Admin also counts. In "summary" write exactly what should reach Admin: the person's real problem or message, taken from the recent chat, in 1 to 3 short Hinglish lines from the person's own point of view, without the person's name and never as an English sentence like "User is asking". Keep "reply" empty, the system confirms by itself. If the person refuses ("nahi", "rehne do"), use CHAT and reply politely instead.
@@ -680,7 +681,13 @@ def strip_ji(text, names):
 
 def send_box(chat_id, text, reply_to=None):
     """Study answers: the whole reply inside one monospace box, fractions stacked."""
-    body = stack_plain(text.replace("`", "").strip())[:3500]
+    lines = []
+    for ln in text.replace("`", "").strip().split("\n"):
+        if "[" in ln or len(ln) <= 24:
+            lines.append(ln)
+        else:
+            lines += textwrap.wrap(ln, 24, subsequent_indent="  ") or [""]
+    body = stack_plain("\n".join(lines))[:3500]
     payload = {"chat_id": chat_id, "text": body, "entities": [{"type": "code", "offset": 0, "length": utf16_len(body)}]}
     if reply_to and chat_id < 0:
         payload["reply_to_message_id"] = reply_to
