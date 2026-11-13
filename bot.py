@@ -72,12 +72,12 @@ HOW TO WORK
 3. Write "reply" in your own natural words, based on that understanding. Do not copy ready-made lines.
 
 CATEGORIES
-- CHAT: normal talk, doubts, studies, general knowledge, everyday questions. This also includes ALL study questions of Maths, Physics, Chemistry, Biology and other school/college subjects: calculations, numericals, divisions, equations, formulas, concepts. Solve them yourself, step by step, and give the final answer clearly. NEVER refuse a study question and never send it to Admin. Only coding/programming is not allowed (see ADMIN).
+- CHAT: normal talk, doubts, studies, general knowledge, everyday questions. Answer the question properly and simply. This includes ALL study questions: maths, physics, chemistry, biology, reasoning, English, history, science and every other subject. Solve them yourself and give the final answer with short clear steps in plain text (for example "122/144 = 61/72 = 0.847 approx"). Write fractions with "/", powers with "^", and never refuse a calculation or a study question.
 - ABOUT_ADMIN: the person asks who the admin is, who runs the group, the admin's name, or (if tagged [VERIFIED ADMIN]) asks whether he himself is the Admin.
 - PROBLEM: the person reports a problem with an app, website, account, payment, course or any service. In "summary" write only the actual problem in 1 to 2 short Hinglish lines from the person's own point of view (like "Meri app khul nahi rahi"), without the person's name and never as an English sentence like "User is asking". In "reply", tell them in your own words that you cannot do anything about it yourself, so they should talk to Admin ji, and that Admin will try to fix it as soon as possible. Do not offer to forward it yourself, the system does that.
 - SEND_TO_ADMIN: the person asks or agrees that their problem or message should be passed to Admin. Examples: "haan bhej do", "ok", "admin tak pahuncha do", "ye zaroori hai admin ko batao", "admin ko ye bol do ...". A short "haan"/"ok"/"kar do" right after Lumi offered to send the problem to Admin also counts. In "summary" write exactly what should reach Admin: the person's real problem or message, taken from the recent chat, in 1 to 3 short Hinglish lines from the person's own point of view, without the person's name and never as an English sentence like "User is asking". Keep "reply" empty, the system confirms by itself. If the person refuses ("nahi", "rehne do"), use CHAT and reply politely instead.
 - SCAM: the person is trying to scam or spam: asking for money, OTP, UPI or bank details, fake offers or giveaways, "double your money", investment or crypto lures, phishing links, promoting other channels or groups, or pretending to be Admin. In "reply", give a firm short warning in your own words that scam, fraud or spam is not allowed here and that if it happens again they will be blocked and removed from the group.
-- ADMIN: the person asks you to bring or find a link, app, website, file, study material or download, asks you to write code or programs (coding only, NOT maths/science questions) or do some other task for them, or raises a serious matter (complaint, medical, legal, money emergency). In "summary" write what the person wants or the matter, in 1 to 2 short Hinglish lines from the person's own point of view (like "Mujhe Vidyakul ka APK chahiye"), without the person's name. In "reply", politely say in your own words that you cannot do this yourself, so they should talk to Admin ji. The system itself then asks them if you should pass the message to Admin, so do not offer that yourself.
+- ADMIN: the person asks you to bring or find a link, app, website, file, study material or download, asks you to write programming code, or raises a serious matter (complaint, medical, legal, money emergency). In "summary" write what the person wants or the matter, in 1 to 2 short Hinglish lines from the person's own point of view (like "Mujhe Vidyakul ka APK chahiye"), without the person's name. In "reply", politely say in your own words that you cannot do this yourself, so they should talk to Admin ji. The system itself then asks them if you should pass the message to Admin, so do not offer that yourself.
 - SKIP: only in groups, when the message is just casual talk between members that does not need you. Keep "reply" empty.
 
 WHO IS TALKING TO WHOM
@@ -88,10 +88,10 @@ IMPORTANT
 - You cannot send anything to Admin yourself. Only the category SEND_TO_ADMIN makes the system send it. So in every other category never say that you are sending, forwarding or have sent something to Admin.
 
 STYLE
-- Simple Hinglish (Hindi in English letters mixed with easy English words), like a friendly senior. 2 to 4 short lines for normal talk. For a maths/science question write the solution step by step, each step on its own short line (up to about 12 lines), ending with the final answer. No markdown, no bullet lists. Write maths in plain text (use /, x, ^2, sqrt, =, ≈), never LaTeX.
+- Simple Hinglish (Hindi in English letters mixed with easy English words), like a friendly senior. 2 to 4 short lines for normal talk. For a maths, physics or other study solution you may use up to 8 short lines (one step per line). No markdown, no bullet lists.
 - Sound natural and human. Never mention Gemini, Google, AI models or "as an AI". If asked who you are, say you are Lumi, the Vidya Verse helper bot.
 - Use one or two fitting emojis in most replies (for example 😊 🙏 👍 📚 ✅), naturally and not too many.
-- Never give links or URLs. Never write code or programs (solving maths/science numericals is fine and encouraged). Never suggest or provide apps, websites, files or downloads.
+- Never give links or URLs. Never write programming code (maths and science solving is allowed and encouraged). Never suggest or provide apps, websites, files or downloads.
 """
 
 GROUP_NOTE = """
@@ -202,31 +202,31 @@ def send(chat_id, text, reply_to=None, plain=False):
 
 
 def call_gemini(contents, system, schema=None):
+    global last_err
     body = {"systemInstruction": {"parts": [{"text": system}]}, "contents": contents}
     if schema:
         body["generationConfig"] = {"responseMimeType": "application/json", "responseSchema": schema}
-    r = None
-    for attempt in range(3):
+    models = [MODEL] + [m for m in ("gemini-flash-lite-latest", "gemini-flash-latest") if m != MODEL]
+    detail = ""
+    for i, model in enumerate(models):
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
         try:
-            r = requests.post(GEMINI_URL, headers={"x-goog-api-key": GEMINI_KEY}, json=body, timeout=60)
+            r = requests.post(url, headers={"x-goog-api-key": GEMINI_KEY}, json=body, timeout=60)
+            parts = r.json()["candidates"][0]["content"]["parts"]
+            text = "".join(p.get("text", "") for p in parts).strip()
+            if text:
+                return text
+            detail = f"{model}: khaali jawab"
         except Exception as e:
-            print("Gemini request error:", e)
-            r = None
-        if r is not None and r.status_code not in (429, 500, 502, 503, 504):
-            break
-        time.sleep(1.5 * (attempt + 1))
-    if r is None:
-        raise RuntimeError("Gemini: connect nahi hua")
-    try:
-        parts = r.json()["candidates"][0]["content"]["parts"]
-        return "".join(p.get("text", "") for p in parts).strip()
-    except Exception:
-        print("Gemini error:", r.text[:300])
-        try:
-            detail = r.json().get("error", {}).get("message", "")
-        except Exception:
-            detail = ""
-        raise RuntimeError(f"Gemini: {detail or 'jawab nahi mila'}"[:200])
+            try:
+                detail = f"{model}: " + (r.json().get("error", {}).get("message", "") or "jawab nahi mila")
+            except Exception:
+                detail = f"{model}: {e}"
+            print("Gemini error:", detail[:300])
+        if i == 0:
+            time.sleep(1)
+    last_err = detail[:200]
+    raise RuntimeError(f"Gemini: {last_err}")
 
 
 def tag_text(name, text, is_admin, is_group, reply_ctx=""):
@@ -338,75 +338,87 @@ def msg_link(chat, message_id):
     return ""
 
 
-# ---- Problem card (Admin ko jaata hai) ----
-# Premium custom emoji ke ids yahan env me daalo (Telegram me message ko @RawDataBot/@JsonDumpBot pe forward
-# karke custom_emoji_id mil jaati hai). Na ho ya bot ko allowed na ho to normal emoji se kaam chalta hai.
-TICK_EMOJI_ID = os.environ.get("TICK_EMOJI_ID", "").strip()
-PROBLEM_EMOJI_IDS = [x.strip() for x in os.environ.get("PROBLEM_EMOJI_IDS", "").split(",") if x.strip()]
-FANCY_FONT = os.environ.get("FANCY_FONT", "1").strip() != "0"
+# Report card style: heading-font name + blue tick, green PROBLEM label, "- member's own words".
+# The two premium (custom) emoji IDs come from Render env vars or the /emojiid command.
+HEADING_LEVEL = min(6, max(1, int(os.environ.get("CARD_HEADING", "2") or 2)))
+emoji_cfg = {
+    "tick": os.environ.get("TICK_EMOJI_ID", "").strip(),
+    "problem": [x.strip() for x in os.environ.get("PROBLEM_EMOJI_IDS", "").split(",") if x.strip()],
+}
 
 
-def utf16_len(s):
-    return len(s.encode("utf-16-le")) // 2
+def card_name(sender):
+    if sender.get("username"):
+        return "@" + sender["username"]
+    return (sender.get("first_name", "") + " " + sender.get("last_name", "")).strip() or "User"
 
 
-def fancy(text):
-    """Serif bold font (Unicode Mathematical Bold), jaisa card me chahiye. Hindi/emoji jaise hain waise rehte hain."""
-    out = []
-    for ch in text:
-        if "A" <= ch <= "Z":
-            out.append(chr(0x1D400 + ord(ch) - 65))
-        elif "a" <= ch <= "z":
-            out.append(chr(0x1D41A + ord(ch) - 97))
-        elif "0" <= ch <= "9":
-            out.append(chr(0x1D7CE + ord(ch) - 48))
-        else:
-            out.append(ch)
-    return "".join(out)
+def report_variants(sender, problem):
+    name = card_name(sender)
+    en, ep = html.escape(name, quote=False), html.escape(problem, quote=False)
+    tick = emoji_cfg["tick"]
+    ids = emoji_cfg["problem"]
+    tick_html = f' <tg-emoji emoji-id="{tick}">\u2714\uFE0F</tg-emoji>' if tick else ""
+    label_html = "".join(f'<tg-emoji emoji-id="{i}">\U0001F7E9</tg-emoji>' for i in ids) or "\U0001F7E9 <b>PROBLEM</b>"
+    h = HEADING_LEVEL
+    rich = f"<h{h}>{en}{tick_html}</h{h}>\n{label_html}\n- {ep}"
+    plain_html = f"<b>{en}</b>{tick_html}\n{label_html}\n- {ep}"
+    plain = f"{name}\n\U0001F7E9 PROBLEM\n- {problem}"
+    return rich, plain_html, plain
 
 
-def report_card(sender, problem):
-    """Name + blue tick, blank line, [PROBLEM badge] - user ka apna message. Returns (text, entities)."""
-    name = (sender.get("first_name", "") + " " + sender.get("last_name", "")).strip() or "User"
-    uid = sender.get("id")
-    styled = fancy(name) if FANCY_FONT else name
-    text, ents = styled, []
-    if uid:
-        ents.append({"type": "text_link", "offset": 0, "length": utf16_len(styled), "url": f"tg://user?id={uid}"})
-    text += " "
-    tick_at = utf16_len(text)
-    text += "\u2705"
-    if TICK_EMOJI_ID:
-        ents.append({"type": "custom_emoji", "offset": tick_at, "length": 1, "custom_emoji_id": TICK_EMOJI_ID})
-    text += "\n\n"
-    if PROBLEM_EMOJI_IDS:
-        for eid in PROBLEM_EMOJI_IDS:
-            ents.append({"type": "custom_emoji", "offset": utf16_len(text), "length": 2, "custom_emoji_id": eid})
-            text += "\U0001F7E9"
-    else:
-        text += "\U0001F7E9 " + fancy("PROBLEM")
-    text += " - " + problem
-    return text, ents
+def send_report(chat_id, sender, problem):
+    rich, plain_html, plain = report_variants(sender, problem)
+    res = api("sendRichMessage", {"chat_id": chat_id, "rich_message": {"html": rich}})
+    if res.get("ok"):
+        return True
+    print("Rich card failed:", res.get("description"))
+    res = api("sendMessage", {"chat_id": chat_id, "text": plain_html, "parse_mode": "HTML",
+                              "disable_web_page_preview": True})
+    if res.get("ok"):
+        return True
+    res = api("sendMessage", {"chat_id": chat_id, "text": plain})
+    return bool(res.get("ok"))
 
 
 def forward_to_admin(chat, sender, summary, original, link):
-    # Goes only to the Admin's private chat, never to the group or the member.
-    # User ne jo likha wahi jaata hai (AI apne hisab se badalta nahi). Sirf "haan bhej do" jaisa chhota jawab ho to summary.
-    orig = (original or "").strip()
-    if not orig or (len(orig.split()) <= 6 and yes_no(orig) == "yes" and summary):
-        problem = (summary or orig).strip()
-    else:
-        problem = orig
-    problem = problem[:900] or "(khaali)"
-    text, ents = report_card(sender, problem)
-    base = {"chat_id": ADMIN_ID, "text": text, "link_preview_options": {"is_disabled": True}}
-    res = api("sendMessage", {**base, "entities": ents})
-    if not res.get("ok"):
-        # shayad custom emoji allowed nahi: unke bina bhejo (normal emoji dikhega)
-        res = api("sendMessage", {**base, "entities": [e for e in ents if e["type"] != "custom_emoji"]})
-    if not res.get("ok"):
-        res = api("sendMessage", {"chat_id": ADMIN_ID, "text": text})
-    return bool(res.get("ok"))
+    # Goes only to the Admin's private chat. Shows the member's exact words, not an AI summary.
+    problem = (original or summary or "").strip()[:900] or "(khaali)"
+    return send_report(ADMIN_ID, sender, problem)
+
+
+def find_emoji_ids(obj, out=None):
+    out = [] if out is None else out
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if k == "custom_emoji_id" and isinstance(v, str):
+                out.append(v)
+            else:
+                find_emoji_ids(v, out)
+    elif isinstance(obj, list):
+        for v in obj:
+            find_emoji_ids(v, out)
+    return out
+
+
+def capture_emoji(msg):
+    own = {k: v for k, v in msg.items() if k != "reply_to_message"}
+    ids = find_emoji_ids(own) or find_emoji_ids(msg.get("reply_to_message") or {})
+    if not ids:
+        send(ADMIN_ID, "Koi premium emoji nahi mila. Apna sample message (naam + blue tick + PROBLEM) "
+                       "bhejo, phir us message par Reply karke /emojiid likho.", plain=True)
+        return
+    if len(ids) < 2:
+        send(ADMIN_ID, f"Sirf 1 premium emoji mila: {ids[0]}\nSample me blue tick aur PROBLEM dono hone chahiye.",
+             plain=True)
+        return
+    emoji_cfg["tick"], emoji_cfg["problem"] = ids[0], ids[1:]
+    send(ADMIN_ID,
+         "Premium emoji mil gaye aur abhi ke liye set ho gaye \u2705\n"
+         "Test karne ke liye /testcard likho.\n\n"
+         "Hamesha ke liye Render > Environment me ye 2 variables daalo:\n"
+         f"TICK_EMOJI_ID = {ids[0]}\nPROBLEM_EMOJI_IDS = {','.join(ids[1:])}",
+         plain=True)
 
 
 def admin_command(chat_id, instruction, msg_id):
@@ -433,7 +445,7 @@ KIND_LABEL = {
     "text": "Text", "document": "Document", "photo": "Photo", "video": "Video", "audio": "Audio",
     "voice": "Voice", "animation": "GIF", "video_note": "Video note",
 }
-QUOTE_RE = re.compile(r'["“”„‟＂]([^"“”„‟＂]{2,60})["“”„‟＂][\s\u200b-\u200f\u2060\ufeff]*$')
+QUOTE_RE = re.compile(r'["“”„‟＂]([^"“”„‟＂]{2,60})["“”„‟＂]\s*$')
 MONTHS = {"jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
           "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12}
 MONTH_RE = "jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec"
@@ -471,46 +483,16 @@ def unquote(text):
     return (text or "").strip().strip('"“”„‟＂').strip()
 
 
+def utf16_len(s):
+    return len(s.encode("utf-16-le")) // 2
+
+
 def keep_entities(original, base, entities):
-    """Admin ki apni formatting (font, bold, premium emoji, links) un hisson ke liye rakho jo quote kategne ke baad bachte hain."""
-    original = original or ""
-    if not entities or not base:
+    """Keep the Admin's own formatting (bold, links...) for the part that stays after the quoted time is cut off."""
+    if not entities or not base or not (original or "").startswith(base):
         return []
-    lead = len(original) - len(original.lstrip())
-    if not original[lead:].startswith(base):
-        return []
-    shift = utf16_len(original[:lead])
     limit = utf16_len(base)
-    out = []
-    for e in entities:
-        off = e.get("offset", 0) - shift
-        ln = e.get("length", 0)
-        if off < 0:
-            ln += off
-            off = 0
-        if ln <= 0 or off >= limit:
-            continue
-        if off + ln > limit:
-            ln = limit - off
-        out.append({**e, "offset": off, "length": ln})
-    return out
-
-
-def clip(text, ents, limit):
-    t = text[:limit]
-    n = utf16_len(t)
-    return t, [e for e in (ents or []) if e["offset"] + e["length"] <= n]
-
-
-def api_keep_format(method, payload, key):
-    """Pehle poori formatting ke saath bhejo; fail ho (premium emoji ki wajah se) to unke bina dobara."""
-    res = api(method, payload, timeout=60)
-    ents = payload.get(key) or []
-    if not res.get("ok") and any(e.get("type") == "custom_emoji" for e in ents):
-        p2 = dict(payload)
-        p2[key] = [e for e in ents if e.get("type") != "custom_emoji"]
-        res = api(method, p2, timeout=60)
-    return res
+    return [e for e in entities if e.get("offset", 0) + e.get("length", 0) <= limit]
 
 
 def local_parse(text):
@@ -819,19 +801,26 @@ def cancel_schedule(arg):
 
 def post_scheduled(s):
     if s["kind"] == "text":
-        t, ents = clip(s["text"], s["entities"], 4000)
-        payload = {"chat_id": CHANNEL_CHAT, "text": t}
-        if ents:
-            payload["entities"] = ents
-        res = api_keep_format("sendMessage", payload, "entities")
+        payload = {"chat_id": CHANNEL_CHAT, "text": s["text"][:4000]}
+        if s["entities"]:
+            payload["entities"] = s["entities"]
+        res = api("sendMessage", payload, timeout=60)
+        if not res.get("ok") and s["entities"]:
+            # Premium emoji / special style refused: retry without them, then as plain text.
+            safe = [e for e in s["entities"] if e.get("type") != "custom_emoji"]
+            if len(safe) != len(s["entities"]):
+                payload["entities"] = safe
+                res = api("sendMessage", payload, timeout=60)
+            if not res.get("ok"):
+                payload.pop("entities", None)
+                res = api("sendMessage", payload, timeout=60)
     else:
         payload = {"chat_id": CHANNEL_CHAT, "from_chat_id": ADMIN_ID, "message_id": s["msg_id"]}
         if s["kind"] in CAPTION_KINDS:
-            t, ents = clip(s["caption"], s["entities"], 1024)
-            payload["caption"] = t
-            if ents:
-                payload["caption_entities"] = ents
-        res = api_keep_format("copyMessage", payload, "caption_entities")
+            payload["caption"] = s["caption"][:1024]
+            if s["entities"]:
+                payload["caption_entities"] = s["entities"]
+        res = api("copyMessage", payload, timeout=60)
     if res.get("ok"):
         late = now_ist() - s["when"] > timedelta(minutes=2)
         note = " (bot so raha tha, isliye thodi late)" if late else ""
@@ -925,6 +914,9 @@ def handle_private(msg, sender):
         start_schedule(msg)
         return
     if not text:
+        if msg.get("rich_message"):
+            send(ADMIN_ID, "Ye heading-style (rich) message hai, ise main schedule nahi kar paata. "
+                           "Normal text bhejo, ya Telegram ka apna Schedule Message use karo.", plain=True)
         return
 
     parts = text.split(None, 1)
@@ -943,6 +935,12 @@ def handle_private(msg, sender):
         return
     if cmd == "/cancel":
         cancel_schedule(arg)
+        return
+    if cmd == "/emojiid":
+        capture_emoji(msg)
+        return
+    if cmd == "/testcard":
+        send_report(ADMIN_ID, {"username": "sample_member", "id": 1}, "मेरा विद्याकुल ऐप नहीं चल रहा")
         return
 
     if editing is not None:
@@ -964,7 +962,7 @@ def handle_private(msg, sender):
         cat, reply, _ = res
         send(ADMIN_ID, reply or FALLBACK.get(cat, "Ji, boliye."))
     else:
-        send(ADMIN_ID, ERROR_REPLY)
+        send(ADMIN_ID, ERROR_REPLY + (f"\n(Wajah: {last_err})" if last_err else ""), plain=True)
 
 
 def handle_group(msg, sender):
@@ -1026,9 +1024,10 @@ def handle_group(msg, sender):
 
     if cat == "SEND_TO_ADMIN":
         if lp:
-            ok = forward_to_admin(chat, sender, summary or lp["summary"], lp["text"], lp["link"])
+            ok = forward_to_admin(chat, sender, lp["summary"], lp["text"], lp["link"])
         else:
-            ok = forward_to_admin(chat, sender, summary, text, msg_link(chat, msg_id))
+            own = summary if (yes_no(text) == "yes" and summary) else text
+            ok = forward_to_admin(chat, sender, summary, own, msg_link(chat, msg_id))
         if ok:
             last_problem.pop(key, None)
         send(chat_id, SENT_OK if ok else SENT_FAIL, msg_id)
