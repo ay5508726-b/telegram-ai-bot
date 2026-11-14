@@ -578,6 +578,20 @@ def plan_for(text, base):
     return plan
 
 
+PROTECT_RE = re.compile(
+    r"(?:https?://|www\.|t\.me/)\S+|@[A-Za-z0-9_]+|\b[A-Za-z0-9-]+(?:\.[A-Za-z]{2,})+(?:/\S*)?"
+)
+
+
+def protect_links(text, plan):
+    """Links, domains and @usernames must stay in normal letters, or they stop being clickable."""
+    for m in PROTECT_RE.finditer(text):
+        for i in range(m.start(), m.end()):
+            if plan[i] is not None:
+                plan[i] = 0
+    return plan
+
+
 def restyle(text, ents, plan):
     out, omap, o, n = [], {}, 0, 0
     for ch, f in zip(text, plan):
@@ -695,7 +709,7 @@ def refresh_style(s):
     """Rebuild the text to post from the Admin's original text: {n word} fonts, the Fonts button, [a / b] fractions."""
     src = s.get("src", "")
     is_text = s["kind"] == "text"
-    t, e = restyle(src, s.get("src_ents"), plan_for(src, s.get("font", 0)))
+    t, e = restyle(src, s.get("src_ents"), protect_links(src, plan_for(src, s.get("font", 0))))
     t, e = stack_with_entities(t, e)
     limit = 4000 if is_text else 1024
     t = t[:limit]
