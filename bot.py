@@ -4,6 +4,7 @@ import json
 import os
 import re
 import textwrap
+import unicodedata
 import zlib
 import threading
 import time
@@ -559,10 +560,35 @@ def get_channel_id():
     return channel_id
 
 
+def plain_letters(text):
+    """𝐒𝐞𝐫𝐢𝐟, 𝙼𝚘𝚗𝚘, 𝓢𝓬𝓻𝓲𝓹𝓽, ＷＩＤＥ, ꜱᴍᴀʟʟ ᴄᴀᴘꜱ ... back to normal letters, so names can be matched."""
+    text = unicodedata.normalize("NFKC", text or "")
+    back = {v: k for k, v in FONT_MAPS[10].items()}
+    return "".join(back.get(c, c) for c in text)
+
+
+def rich_strings(obj, out):
+    """Posts written in Telegram's article / heading style keep their words inside rich_message, not in text."""
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if k in ("text", "caption", "alternative_text", "url", "href", "link") and isinstance(v, str):
+                out.append(v)
+            else:
+                rich_strings(v, out)
+    elif isinstance(obj, list):
+        for v in obj:
+            rich_strings(v, out)
+
+
 def post_info(msg):
     text = msg.get("text") or msg.get("caption") or ""
+    if not text and msg.get("rich_message"):
+        parts = []
+        rich_strings(msg["rich_message"], parts)
+        text = "\n".join(parts)
     ents = (msg.get("entities") or []) + (msg.get("caption_entities") or [])
     kind = media_kind(msg) or "text"
+    text = plain_letters(text)
     has_link = bool(URL_RE.search(text)) or any(e.get("type") in ("url", "text_link") for e in ents)
     clean = re.sub(r"\s+", " ", URL_RE.sub(" ", text)).strip()
     letters = len(re.findall(r"[A-Za-z0-9ऀ-ॿ]", clean))
@@ -672,6 +698,7 @@ def local_pick(request, cand):
 
 
 def find_post(request):
+    request = plain_letters(request)
     with index_lock:
         cand = list(index[:60])
     if not cand or not channel_id:
@@ -1507,7 +1534,7 @@ def handle_private(msg, sender):
         with index_lock:
             top = list(index[:8])
         lines = [f"{c['i']} | {c['k']} | {c['t'][:50]}" for c in top]
-        send(ADMIN_ID, f"{len(index)} posts yaad hain.\n" + "\n".join(lines), plain=True)
+        send(ADMIN_ID, f"{len(index)} posts yaad hain. Channel ID: {channel_id or 'nahi mila'}\n" + "\n".join(lines), plain=True)
         return
     if cmd == "/emojiid":
         capture_emoji(msg)
