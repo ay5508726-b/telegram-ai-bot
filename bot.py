@@ -86,10 +86,19 @@ CATEGORIES
   * Keep every line short, about 30 characters at most. Break long sentences into several short lines.
   * Use real symbols: μ₀ π θ α β Δ Σ ² ³ √ × ÷ ≈ ≠ ≤ ≥ → and subscripts like I₁ x₀. Never write "mu_0", "pi", "sqrt", "^" or "*" for multiply.
   * Every fraction is written as [numerator / denominator] and the system draws it stacked (top and bottom with a line). Put nothing else inside the square brackets, do not nest them, and use ( ) for grouping inside. Never put long text before or after a fraction on the same line (only a short label like \"B =\"); a line like \"Answer:\" stays alone and the fraction goes on the next line, e.g. [μ₀ I R² / 2 (R² + x²)³ᐟ²]. For a fractional power write it small like ³ᐟ², not with "^".
-  * Layout: first the formula or direct answer, then the meaning of each symbol, one per line ("I = current"), then "Step 1:", "Step 2:" ... one idea per step for calculations, and the last line "Answer: ...". A simple fact needs only a few short lines, no steps.
-  * For every calculation show the FULL working step by step, never only the answer: follow BODMAS, one operation per step, with the numbers written in each step (for example "Step 1: 12 × 23 = 276", then "Step 2: 276 ÷ 59"). Multiply with × (never *), divide with ÷ or a fraction. For a big fraction, simplify it step by step by dividing top and bottom by their common factor (show the factor), then give the decimal value, then "Answer: ...".
-  * LANGUAGE (this rule wins over any other language rule for study answers): reply in the language of the question. English question: very simple, easy English. Hindi (Devanagari) question: very simple Hindi in Devanagari. Hinglish question: simple Hinglish. For a descriptive or paragraph-type question (explain, define, why, what is, short note, difference) write a short paragraph of 3 to 6 short lines in the easiest words, the way a student of that medium would understand it, and break it into short lines. Calculations still follow the step by step rule.
-  * When the question is in Hinglish, the explanation words must be Hinglish (like \"current\", \"loop ka radius\", \"pehle ... phir ...\"), simple and clear, not English sentences. Steps must be written in Hinglish too and each step on ONE line, like \"Step 1: +q ka field likho\". At most ONE fraction per line, never two fractions with × between them on one line (split it into steps, one fraction per line). The whole stacked fraction must be 32 characters wide at most. Keep numerator and denominator short (14 characters at most each, use symbols). Do not repeat a formula that is already shown; the last line \"Answer: ...\" is only for the final value or one short result. No greeting line.
+  * Layout: first the formula or direct answer, then the meaning of each symbol, one per line ("I = current"), then the steps for a calculation, and the last line "Answer: ...". Start EVERY step line with the symbol ➳ and never write "Step 1", "Step 2". A simple fact needs only a few short lines and no steps. A paragraph-type answer (see LENGTH) has no "Answer:" line.
+  * CALCULATIONS: show the FULL working step by step in BODMAS order, never only the answer, with the numbers written in every step. Multiply with × (never *). NEVER write the ÷ sign and never write a division as a/b on one line: every division is a fraction written as [top / bottom]. Never split a division away from the multiplication or addition above it. Every step is TWO parts: first a line "➳ <what is being done>:" written in words (the label), then on the next line the fraction or result. First rewrite the whole expression as ONE fraction, the next step solves the top and bottom, the last step does the division. In Hinglish it looks like:
+➳ Pehle sawaal ko fraction mein:
+[2 × 3 / 5]
+➳ Upar ka hissa solve karo:
+[6 / 5]
+➳ Ab bhaag karo:
+[6 / 5] = 1.2
+In English the labels are "Write the question as a fraction:", "Solve the top part:", "Now divide:"; in Hindi "पहले सवाल को भिन्न (fraction) में लिखो:", "ऊपर वाला हिस्सा हल करो:", "अब भाग करो:". Never leave a step without its label. A big fraction is simplified step by step by dividing top and bottom by their common factor (name the factor), every stage written as a fraction. The last line is "Answer: ..." and it always also gives the decimal (point) value, like "Answer: 6/5 = 1.2"; if the decimal is long, round to 2 or 3 places with ≈ (like "≈ 4.68"). Solve as far as it can be solved.
+  * The label is on its own line; the fraction line below may carry only a short "=" or result beside it, like "[276 / 59] ≈ 4.68". Put two fractions on one line only if the whole stacked line stays within 32 characters. Keep numerator and denominator short (14 characters at most each, use symbols).
+  * LANGUAGE (this rule wins over any other language rule for study answers): 1) Hindi-subject topics (Hindi literature, books like Ramcharitmanas, poets and writers, kavita, Hindi grammar or vyakaran, Sanskrit, shlok, doha, muhavare) and history (itihaas) are ALWAYS answered in simple Hindi written in Devanagari, even if the question was typed in English or Hinglish. 2) Maths, physics, chemistry, biology, reasoning and all other subjects: English question gets simple English, Hinglish question gets simple Hinglish, Hindi (Devanagari) question gets simple Hindi. If the person asks for Hindi ("Hindi me batao", "हिंदी में"), answer in Devanagari Hindi even for maths, keeping the same step format. Do not switch to Hindi for these subjects otherwise. In Hinglish answers the explanation words are Hinglish ("loop ka radius", "pehle ... phir ..."), simple and clear.
+  * LENGTH: for a descriptive question (explain, define, why, what is, difference) write a paragraph of 4 to 8 short lines in the easiest words, the way a student of that medium understands it. For a biography (jeevan parichay), short note, essay (nibandh) or any 5 to 7 mark "likho" question write AT LEAST 80 words as a connected paragraph in the proper order (for a writer: birth, education, works, language and style, death and importance), broken into short lines, not tiny parts. Facts, dates and titles must be correct; leave out what you are not sure of.
+  * Do not repeat a formula that is already shown. No greeting line.
 - RESOURCE: the person asks for a website, link, app, APK, PDF, notes, formula sheet or any study material or file by some name (for example "pw ki site de do", "next topper ka app", "formula sheet ki pdf"). In "summary" write the search words: what it is and its name, like "pw site" or "next topper app". In "reply" write one short friendly Hinglish line like "Ye lo bhai 👇" (the system attaches the file or link itself). Never write a link yourself. If nothing is found the system answers by itself.
 - ABOUT_ADMIN: the person asks who the admin is, who runs the group, the admin's name, or (if tagged [VERIFIED ADMIN]) asks whether he himself is the Admin.
 - PROBLEM: the person reports a problem with an app, website, account, payment, course or any service. In "summary" write only the actual problem in 1 to 2 short Hinglish lines from the person's own point of view (like "Meri app khul nahi rahi"), without the person's name and never as an English sentence like "User is asking". In "reply", tell them in your own words that you cannot do anything about it yourself, so they should talk to Admin ji, and that Admin will try to fix it as soon as possible. Do not offer to forward it yourself, the system does that.
@@ -956,11 +965,50 @@ def strip_ji(text, names):
     return text
 
 
+ANS_RE = re.compile(r"^\s*(answer|ans|\u0909\u0924\u094d\u0924\u0930)\s*[:\uFF1A]\s*(.+?)\s*$", re.IGNORECASE)
+STEP_RE = re.compile(r"(?im)^[ \t]*(?:step|\u0938\u094d\u091f\u0947\u092a|\u091a\u0930\u0923)\s*\d+\s*[:.)\-\u2013]*\s*")
+
+
+def fractionize(text):
+    """Every division outside [..] becomes a [top / bottom] fraction, so it is drawn stacked."""
+    out, pos = [], 0
+
+    def conv(seg):
+        seg = re.sub(r"(?<![\w/.])(\d+(?:\.\d+)?)\s*/\s*(\d+(?:\.\d+)?)(?![\w/])", r"[\1 / \2]", seg)
+        parts, last = [], 0
+        for f in FRAC_RE.finditer(seg):  # do not touch what is already a fraction
+            parts.append(re.sub(r"([\w.\u00b2\u00b3]+|\([^()\n]{1,20}\))\s*\u00f7\s*([\w.\u00b2\u00b3]+|\([^()\n]{1,20}\))", r"[\1 / \2]", seg[last:f.start()]))
+            parts.append(f.group(0))
+            last = f.end()
+        parts.append(re.sub(r"([\w.\u00b2\u00b3]+|\([^()\n]{1,20}\))\s*\u00f7\s*([\w.\u00b2\u00b3]+|\([^()\n]{1,20}\))", r"[\1 / \2]", seg[last:]))
+        return "".join(parts)
+
+    for m in FRAC_RE.finditer(text):
+        out.append(conv(text[pos:m.start()]))
+        out.append(m.group(0))
+        pos = m.end()
+    out.append(conv(text[pos:]))
+    return "".join(out)
+
+
 def send_box(chat_id, text, reply_to=None):
-    """Study answers: the whole reply inside one monospace box, fractions stacked."""
+    """Study answers: the working in one monospace box, then the Answer alone in bold."""
+    text = text.replace("`", "").strip()
+    text = re.sub(r"(?<=[\w)\]])\s*\*\s*(?=[\w(\[])", " \u00d7 ", text)  # a * b -> a x b
+    src = text.split("\n")
+    answer = None
+    for i in range(len(src) - 1, -1, -1):
+        m = ANS_RE.match(src[i])
+        if m:
+            label = "\u0909\u0924\u094d\u0924\u0930" if m.group(1)[0] > "\u0900" else "Answer"
+            ans = FRAC_RE.sub(lambda f: f.group(1).replace(" / ", "/").strip(), m.group(2))
+            answer = f"{label}: {ans}"
+            del src[i]
+            break
+    text = STEP_RE.sub("\u27b3 ", "\n".join(src)).strip()
+    text = fractionize(text)
     lines = []
-    text = re.sub(r"(?<=[\w)\]])\s*\*\s*(?=[\w(\[])", " × ", text)  # a * b -> a × b
-    for ln in text.replace("`", "").strip().split("\n"):
+    for ln in text.split("\n"):
         if "[" in ln:
             st = stack_line(ln)
             if st:
@@ -972,13 +1020,19 @@ def send_box(chat_id, text, reply_to=None):
         else:
             lines += textwrap.wrap(ln, 32, subsequent_indent="  ") or [""]
     body = "\n".join(lines)[:3500]
-    payload = {"chat_id": chat_id, "text": "<pre>" + html.escape(body, quote=False) + "</pre>", "parse_mode": "HTML"}
-    if reply_to and chat_id < 0:
-        payload["reply_to_message_id"] = reply_to
-        payload["allow_sending_without_reply"] = True
-    res = api("sendMessage", payload)
-    if not res.get("ok"):
-        send(chat_id, body, reply_to, plain=True)
+    if body.strip():
+        payload = {"chat_id": chat_id, "text": "<pre>" + html.escape(body, quote=False) + "</pre>", "parse_mode": "HTML"}
+        if reply_to and chat_id < 0:
+            payload["reply_to_message_id"] = reply_to
+            payload["allow_sending_without_reply"] = True
+        res = api("sendMessage", payload)
+        if not res.get("ok"):
+            send(chat_id, body, reply_to, plain=True)
+    if answer:
+        res = api("sendMessage", {"chat_id": chat_id, "text": "\u2705 <b>" + html.escape(answer, quote=False) + "</b>",
+                                   "parse_mode": "HTML"})
+        if not res.get("ok"):
+            send(chat_id, "\u2705 " + answer, plain=True)
 
 
 def local_parse(text):
