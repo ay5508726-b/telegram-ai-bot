@@ -1,8 +1,10 @@
+import base64
 import html
 import json
 import os
 import re
 import textwrap
+import zlib
 import threading
 import time
 from datetime import datetime, timedelta, timezone
@@ -19,7 +21,7 @@ GROUP_USERNAME = os.environ.get("GROUP_USERNAME", "vidyaversechat").strip().lstr
 CHANNEL_USERNAME = os.environ.get("CHANNEL_USERNAME", "vidyaverse0").strip().lstrip("@")
 
 GROUP_LINK = f"https://t.me/{GROUP_USERNAME}"
-CHANNEL_LINK = f"https://t.me/{CHANNEL_USERNAME}"
+CHANNEL_LINK = os.environ.get("CHANNEL_INVITE_LINK", "").strip() or f"https://t.me/{CHANNEL_USERNAME}"
 MAX_DAYS = 30
 CHANNEL_CHAT = f"@{CHANNEL_USERNAME}"
 GROUP_CHAT = f"@{GROUP_USERNAME}"
@@ -85,15 +87,17 @@ CATEGORIES
   * Every fraction is written as [numerator / denominator] and the system draws it stacked (top and bottom with a line). Put nothing else inside the square brackets, do not nest them, and use ( ) for grouping inside. Never put long text before or after a fraction on the same line (only a short label like \"B =\"); a line like \"Answer:\" stays alone and the fraction goes on the next line, e.g. [μ₀ I R² / 2 (R² + x²)³ᐟ²]. For a fractional power write it small like ³ᐟ², not with "^".
   * Layout: first the formula or direct answer, then the meaning of each symbol, one per line ("I = current"), then "Step 1:", "Step 2:" ... one idea per step for calculations, and the last line "Answer: ...". A simple fact needs only a few short lines, no steps.
   * The explanation words must be Hinglish (like \"current\", \"loop ka radius\", \"pehle ... phir ...\"), simple and clear, not English sentences. Steps must be written in Hinglish too and each step on ONE line, like \"Step 1: +q ka field likho\". At most ONE fraction per line, never two fractions with × between them on one line (split it into steps, one fraction per line). The whole stacked fraction must be 32 characters wide at most. Keep numerator and denominator short (14 characters at most each, use symbols). Do not repeat a formula that is already shown; the last line \"Answer: ...\" is only for the final value or one short result. No greeting line.
+- RESOURCE: the person asks for a website, link, app, APK, PDF, notes, formula sheet or any study material or file by some name (for example "pw ki site de do", "next topper ka app", "formula sheet ki pdf"). In "summary" write the search words: what it is and its name, like "pw site" or "next topper app". In "reply" write one short friendly Hinglish line like "Ye lo bhai 👇" (the system attaches the file or link itself). Never write a link yourself. If nothing is found the system answers by itself.
 - ABOUT_ADMIN: the person asks who the admin is, who runs the group, the admin's name, or (if tagged [VERIFIED ADMIN]) asks whether he himself is the Admin.
 - PROBLEM: the person reports a problem with an app, website, account, payment, course or any service. In "summary" write only the actual problem in 1 to 2 short Hinglish lines from the person's own point of view (like "Meri app khul nahi rahi"), without the person's name and never as an English sentence like "User is asking". In "reply", tell them in your own words that you cannot do anything about it yourself, so they should talk to Admin ji, and that Admin will try to fix it as soon as possible. Do not offer to forward it yourself, the system does that.
 - SEND_TO_ADMIN: the person asks or agrees that their problem or message should be passed to Admin. Examples: "haan bhej do", "ok", "admin tak pahuncha do", "ye zaroori hai admin ko batao", "admin ko ye bol do ...". A short "haan"/"ok"/"kar do" right after Lumi offered to send the problem to Admin also counts. In "summary" write exactly what should reach Admin: the person's real problem or message, taken from the recent chat, in 1 to 3 short Hinglish lines from the person's own point of view, without the person's name and never as an English sentence like "User is asking". Keep "reply" empty, the system confirms by itself. If the person refuses ("nahi", "rehne do"), use CHAT and reply politely instead.
 - SCAM: the person is trying to scam or spam: asking for money, OTP, UPI or bank details, fake offers or giveaways, "double your money", investment or crypto lures, phishing links, promoting other channels or groups, or pretending to be Admin. In "reply", give a firm short warning in your own words that scam, fraud or spam is not allowed here and that if it happens again they will be blocked and removed from the group.
-- ADMIN: the person asks you to bring or find a link, app, website, file, study material or download, asks you to write programming code, or raises a serious matter (complaint, medical, legal, money emergency). In "summary" write what the person wants or the matter, in 1 to 2 short Hinglish lines from the person's own point of view (like "Mujhe Vidyakul ka APK chahiye"), without the person's name. In "reply", politely say in your own words that you cannot do this yourself, so they should talk to Admin ji. The system itself then asks them if you should pass the message to Admin, so do not offer that yourself.
+- ADMIN: the person asks you to write programming code, or raises a serious matter (complaint, medical, legal, money emergency). In "summary" write what the person wants or the matter, in 1 to 2 short Hinglish lines from the person's own point of view (like "Mujhe Vidyakul ka APK chahiye"), without the person's name. In "reply", politely say in your own words that you cannot do this yourself, so they should talk to Admin ji. The system itself then asks them if you should pass the message to Admin, so do not offer that yourself.
 - SKIP: only in groups, when the message is just casual talk between members that does not need you. Keep "reply" empty.
 
 WHO IS TALKING TO WHOM
-- In a group, members also talk to each other. Answer only when a message is clearly for you: it uses the name Lumi/Lomi, mentions you, replies to one of your own messages, or it is a general question or problem put to the whole group and not directed at one particular member.
+- In a group, members also talk to each other. Answer when a message is clearly a question, problem or request for the whole group (study doubt, a site/app/PDF request, a problem), even if Lumi is not named, BUT only if it is not aimed at one particular person.
+- Use SKIP when the person talks to a particular member: the message names someone ("Harsh bhai mujhe kal kaam tha", "Amit tum kahan ho"), even if it is a question. Use SKIP also when members are chatting with each other (see the recent messages) and the message simply continues that talk. If the message uses the name Lumi/Lomi, mentions you, or replies to one of your own messages, it is for you.
 - When a message says "(replying to Name: ...)", the person is answering that member, not you. Thanks ("thanks bhai", "shukriya"), greetings, jokes or compliments in such a reply are for that member, never for you. Use SKIP.
 
 IMPORTANT
@@ -123,7 +127,7 @@ SCHEMA = {
         "analysis": {"type": "STRING"},
         "category": {
             "type": "STRING",
-            "enum": ["CHAT", "STUDY", "ABOUT_ADMIN", "PROBLEM", "SEND_TO_ADMIN", "SCAM", "ADMIN", "SKIP"],
+            "enum": ["CHAT", "STUDY", "RESOURCE", "ABOUT_ADMIN", "PROBLEM", "SEND_TO_ADMIN", "SCAM", "ADMIN", "SKIP"],
         },
         "summary": {"type": "STRING"},
         "reply": {"type": "STRING"},
@@ -144,8 +148,9 @@ TIME_SCHEMA = {
     "propertyOrdering": ["ok", "datetime", "caption", "question"],
 }
 
-CATEGORIES = {"CHAT", "STUDY", "ABOUT_ADMIN", "PROBLEM", "SEND_TO_ADMIN", "SCAM", "ADMIN", "SKIP"}
+CATEGORIES = {"CHAT", "STUDY", "RESOURCE", "ABOUT_ADMIN", "PROBLEM", "SEND_TO_ADMIN", "SCAM", "ADMIN", "SKIP"}
 FALLBACK = {
+    "RESOURCE": ADMIN_REPLY,
     "PROBLEM": PROBLEM_REPLY,
     "SCAM": SCAM_REPLY,
     "ADMIN": ADMIN_REPLY,
@@ -261,10 +266,10 @@ def add_history(chat_id, role, text):
         h.pop(0)
 
 
-def analyze(chat_id, text, is_group, quiet=False):
+def analyze(chat_id, text, is_group, quiet=False, extra=""):
     add_history(chat_id, "user", text)
     h = history[chat_id]
-    prompt = SYSTEM_PROMPT + (GROUP_NOTE if is_group else PRIVATE_NOTE)
+    prompt = SYSTEM_PROMPT + (GROUP_NOTE + extra if is_group else PRIVATE_NOTE)
     try:
         raw = call_gemini(h, prompt, SCHEMA)
     except Exception:
@@ -293,7 +298,7 @@ def analyze(chat_id, text, is_group, quiet=False):
     if cat == "STUDY":
         reply = reply.replace("`", "")
 
-    if quiet and cat in ("CHAT", "STUDY", "ABOUT_ADMIN"):
+    if quiet and cat in ("CHAT", "STUDY", "RESOURCE", "ABOUT_ADMIN"):
         # The member is talking to another member, not to Lumi.
         h.pop()
         return "SKIP", "", ""
@@ -524,6 +529,201 @@ def keep_entities(original, base, entities):
         return []
     limit = utf16_len(base)
     return [e for e in entities if e.get("offset", 0) + e.get("length", 0) <= limit]
+
+
+# ---------------- channel posts: remember them so Lumi can hand out the latest one ----------------
+
+channel_id = int(os.environ.get("CHANNEL_ID", "0") or 0)
+index = []  # newest first: {"i": message_id, "k": kind, "t": text, "l": has_link}
+index_lock = threading.Lock()
+index_dirty = False
+index_mid = None
+URL_RE = re.compile(r"https?://\S+|www\.\S+|t\.me/\S+", re.IGNORECASE)
+INDEX_TAG = "LUMI-INDEX:"
+STOP = {"site", "link", "app", "apk", "pdf", "de", "do", "dedo", "dena", "bhai", "ki", "ka", "ko", "ke", "chahiye",
+        "please", "pls", "mujhe", "send", "dijiye", "bhejo", "ek", "hai", "h", "the", "me", "main", "yaar"}
+
+
+def chan_target():
+    return channel_id or CHANNEL_CHAT
+
+
+def get_channel_id():
+    global channel_id, index_dirty
+    if not channel_id:
+        res = api("getChat", {"chat_id": CHANNEL_CHAT})
+        cid = (res.get("result") or {}).get("id")
+        if cid:
+            channel_id = cid
+            index_dirty = True
+    return channel_id
+
+
+def post_info(msg):
+    text = msg.get("text") or msg.get("caption") or ""
+    ents = (msg.get("entities") or []) + (msg.get("caption_entities") or [])
+    kind = media_kind(msg) or "text"
+    has_link = bool(URL_RE.search(text)) or any(e.get("type") in ("url", "text_link") for e in ents)
+    clean = re.sub(r"\s+", " ", URL_RE.sub(" ", text)).strip()
+    letters = len(re.findall(r"[A-Za-z0-9ऀ-ॿ]", clean))
+    ok = letters >= 2 and (kind != "text" or has_link)
+    return ok, kind, clean[:120], has_link
+
+
+def index_post(msg_id, msg):
+    global index_dirty
+    ok, kind, clean, has_link = post_info(msg)
+    with index_lock:
+        index[:] = [e for e in index if e["i"] != msg_id]
+        if ok:
+            index.append({"i": msg_id, "k": kind, "t": clean, "l": has_link})
+            index.sort(key=lambda e: e["i"], reverse=True)
+            del index[150:]
+        index_dirty = True
+    return ok
+
+
+def handle_channel_post(cp):
+    global channel_id
+    chat = cp.get("chat", {})
+    if not channel_id and (chat.get("username") or "").lower() == CHANNEL_USERNAME.lower():
+        channel_id = chat["id"]
+    if chat.get("id") != channel_id:
+        return
+    index_post(cp["message_id"], cp)
+
+
+def pack_index():
+    items = list(index)
+    while True:
+        raw = json.dumps({"c": channel_id, "x": items}, ensure_ascii=False, separators=(",", ":"))
+        text = INDEX_TAG + base64.b64encode(zlib.compress(raw.encode("utf-8"), 9)).decode()
+        if len(text) <= 3900 or not items:
+            return text
+        items = items[:-5]
+
+
+def load_index():
+    global channel_id, index_mid
+    res = api("getChat", {"chat_id": ADMIN_ID})
+    pm = (res.get("result") or {}).get("pinned_message") or {}
+    text = pm.get("text") or ""
+    if not text.startswith(INDEX_TAG):
+        return
+    try:
+        data = json.loads(zlib.decompress(base64.b64decode(text[len(INDEX_TAG):])).decode("utf-8"))
+    except Exception as e:
+        print("Index load error:", e)
+        return
+    index_mid = pm.get("message_id")
+    if data.get("c") and not channel_id:
+        channel_id = data["c"]
+    with index_lock:
+        index[:] = data.get("x", [])
+
+
+def save_index_if_dirty():
+    global index_dirty, index_mid
+    if not index_dirty:
+        return
+    index_dirty = False
+    text = pack_index()
+    if index_mid:
+        res = api("editMessageText", {"chat_id": ADMIN_ID, "message_id": index_mid, "text": text})
+        if res.get("ok") or "not modified" in str(res.get("description", "")):
+            return
+    res = api("sendMessage", {"chat_id": ADMIN_ID, "text": text})
+    mid = (res.get("result") or {}).get("message_id")
+    if mid:
+        index_mid = mid
+        api("pinChatMessage", {"chat_id": ADMIN_ID, "message_id": mid, "disable_notification": True})
+    else:
+        index_dirty = True
+
+
+PICK_SCHEMA = {"type": "OBJECT", "properties": {"pick": {"type": "INTEGER"}}, "required": ["pick"]}
+PICK_SYSTEM = """You match a member's request to ONE post of a study channel. Every post line looks like: number | type | text.
+Choose a post only if its text clearly names the SAME thing the member asked for (a name like pw, next topper, career will; spellings may differ a little) AND it is the right kind of thing: a website needs a post with a link, an app or APK needs an apk file or a post about the app with its link, a PDF or notes or a formula sheet needs a document.
+Posts are listed newest first. If several posts match, choose the newest one (the smallest number).
+If the request has no specific name, or nothing clearly matches, return 0. Never guess.
+Return only JSON: {"pick": number}."""
+
+
+def local_pick(request, cand):
+    words = [w for w in re.findall(r"[a-z0-9]+", request.lower()) if len(w) >= 2 and w not in STOP]
+    if not words:
+        return None
+    low = request.lower()
+    want_link = bool(re.search(r"\b(site|website|link)\b", low))
+    want_file = bool(re.search(r"\b(apk|pdf|notes|sheet|file)\b", low))
+    want_app = bool(re.search(r"\bapp\b", low))
+    for c in cand:
+        t = c["t"].lower()
+        if not all(w in t for w in words):
+            continue
+        if want_link and not c["l"]:
+            continue
+        if want_file and c["k"] == "text":
+            continue
+        if want_app and not (c["k"] != "text" or "app" in t or "apk" in t):
+            continue
+        return c
+    return None
+
+
+def find_post(request):
+    with index_lock:
+        cand = list(index[:60])
+    if not cand or not channel_id:
+        return None
+    lines = [f"{n} | {c['k']}{' + link' if c['l'] else ''} | {c['t']}" for n, c in enumerate(cand, 1)]
+    prompt = f"REQUEST: {request}\nPOSTS (newest first):\n" + "\n".join(lines)
+    try:
+        raw = call_gemini([{"role": "user", "parts": [{"text": prompt}]}], PICK_SYSTEM, PICK_SCHEMA)
+        n = int(json.loads(raw).get("pick", 0))
+    except Exception:
+        return local_pick(request, cand)
+    return cand[n - 1] if 1 <= n <= len(cand) else None
+
+
+def copy_post(chat_id, entry, reply_to=None):
+    payload = {"chat_id": chat_id, "from_chat_id": channel_id, "message_id": entry["i"]}
+    if reply_to and chat_id < 0:
+        payload["reply_to_message_id"] = reply_to
+        payload["allow_sending_without_reply"] = True
+    return bool(api("copyMessage", payload).get("ok"))
+
+
+def forwarded_channel_post(msg):
+    fo = msg.get("forward_origin") or {}
+    if fo.get("type") == "channel" and fo.get("chat") and fo.get("message_id"):
+        return fo["chat"], fo["message_id"]
+    if msg.get("forward_from_chat") and msg.get("forward_from_message_id"):
+        return msg["forward_from_chat"], msg["forward_from_message_id"]
+    return None
+
+
+known = {}
+recent = {}
+
+
+def note_member(chat_id, name):
+    lst = known.setdefault(chat_id, [])
+    if name and name not in lst:
+        lst.append(name)
+        del lst[:-30]
+
+
+def group_extra(chat_id):
+    names = ", ".join(known.get(chat_id, []))
+    lines = recent.get(chat_id, [])[-6:]
+    out = ""
+    if names:
+        out += f"\nMembers seen in this group: {names}.\n"
+    if lines:
+        out += "Recent messages in the group (also the ones Lumi did not answer):\n" + "\n".join(lines) + "\n"
+    return out
+
 
 
 # ---------------- fonts and stacked maths ----------------
@@ -1144,8 +1344,9 @@ def post_one(s, chat):
 
 def post_scheduled(s):
     dest = s.get("dest", "channel")
-    targets = {"channel": [("Channel", CHANNEL_CHAT)], "group": [("Group", GROUP_CHAT)],
-               "both": [("Channel", CHANNEL_CHAT), ("Group", GROUP_CHAT)]}[dest]
+    ch = chan_target()
+    targets = {"channel": [("Channel", ch)], "group": [("Group", GROUP_CHAT)],
+               "both": [("Channel", ch), ("Group", GROUP_CHAT)]}[dest]
     done, failed = [], []
     for name, chat in targets:
         res = post_one(s, chat)
@@ -1173,6 +1374,7 @@ def scheduler():
     while True:
         time.sleep(10)
         try:
+            save_index_if_dirty()
             now = now_ist()
             with sched_lock:
                 due = [s for s in schedules if s["when"] <= now]
@@ -1259,6 +1461,20 @@ def handle_private(msg, sender):
         send_promo(msg["chat"]["id"])
         return
 
+    fp = forwarded_channel_post(msg)
+    if fp:
+        fchat, fmid = fp
+        if not channel_id and (fchat.get("username") or "").lower() == CHANNEL_USERNAME.lower():
+            globals()["channel_id"] = fchat["id"]
+        if fchat.get("id") != channel_id:
+            send(ADMIN_ID, "Ye post mere channel ki nahi hai, isliye list me nahi jodi.", plain=True)
+            return
+        if index_post(fmid, msg):
+            send(ADMIN_ID, f"\u2705 Ye post yaad kar li. Ab {len(index)} posts yaad hain.", plain=True)
+        else:
+            send(ADMIN_ID, "Is post me naam wala text nahi hai (ya sirf text hai bina link ke), isliye nahi jodi.", plain=True)
+        return
+
     text = msg.get("text")
     if media_kind(msg):
         clear_edit()
@@ -1287,6 +1503,12 @@ def handle_private(msg, sender):
     if cmd == "/cancel":
         cancel_schedule(arg)
         return
+    if cmd == "/posts":
+        with index_lock:
+            top = list(index[:8])
+        lines = [f"{c['i']} | {c['k']} | {c['t'][:50]}" for c in top]
+        send(ADMIN_ID, f"{len(index)} posts yaad hain.\n" + "\n".join(lines), plain=True)
+        return
     if cmd == "/emojiid":
         capture_emoji(msg)
         return
@@ -1311,6 +1533,11 @@ def handle_private(msg, sender):
     res = analyze(ADMIN_ID, tag_text("", text, True, False), False)
     if res:
         cat, reply, _ = res
+        if cat == "RESOURCE":
+            hit = find_post(_ or text)
+            if hit and copy_post(ADMIN_ID, hit):
+                return
+            reply = "Is naam ki koi post meri list me nahi mili."
         if cat == "STUDY" and reply:
             send_box(ADMIN_ID, reply)
         else:
@@ -1357,7 +1584,14 @@ def handle_group(msg, sender):
         snippet = (rt.get("text") or rt.get("caption") or "[file]").replace("\n", " ")[:80]
         reply_ctx = f'replying to {rf.get("first_name", "someone")}: "{snippet}"'
     quiet = to_human and not mentions_bot(text)
-    res = analyze(chat_id, tag_text(name, text, False, True, reply_ctx), True, quiet)
+    note_member(chat_id, name)
+    if rt and rf.get("first_name") and not rf.get("is_bot"):
+        note_member(chat_id, rf["first_name"])
+    extra = group_extra(chat_id)
+    res = analyze(chat_id, tag_text(name, text, False, True, reply_ctx), True, quiet, extra)
+    lines = recent.setdefault(chat_id, [])
+    lines.append(f"{name}: {text[:150]}".replace("\n", " "))
+    del lines[:-10]
 
     lp = last_problem.get(key)
     if lp and time.time() - lp["t"] > 1800:
@@ -1386,6 +1620,14 @@ def handle_group(msg, sender):
             last_problem.pop(key, None)
         send(chat_id, SENT_OK if ok else SENT_FAIL, msg_id)
         return
+
+    if cat == "RESOURCE":
+        hit = find_post(summary or text)
+        if hit:
+            send(chat_id, reply or "Ye lo \U0001F447", msg_id)
+            if copy_post(chat_id, hit, msg_id):
+                return
+        cat, reply = "ADMIN", ADMIN_REPLY
 
     reply = strip_ji(reply, [name, rf.get("first_name", "")])
     if cat == "STUDY":
@@ -1435,6 +1677,12 @@ def poll():
             r = requests.get(f"{TG}/getUpdates", params={"offset": offset, "timeout": 30}, timeout=40)
             for u in r.json().get("result", []):
                 offset = u["update_id"] + 1
+                cp = u.get("channel_post") or u.get("edited_channel_post")
+                if cp:
+                    try:
+                        handle_channel_post(cp)
+                    except Exception as e:
+                        print("Channel post error:", e)
                 cq = u.get("callback_query")
                 if cq:
                     try:
@@ -1465,6 +1713,11 @@ class Ping(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    try:
+        load_index()
+        get_channel_id()
+    except Exception as e:
+        print("Startup index error:", e)
     threading.Thread(target=scheduler, daemon=True).start()
     threading.Thread(target=poll, daemon=True).start()
     port = int(os.environ.get("PORT", 8080))
